@@ -37,3 +37,13 @@ FakeSource <- R6::R6Class(
 fake_history <- function(path, snaps, name = "fake", fail = FALSE) {
   FakeSource$new(name = name, data = stats::setNames(list(snaps), path), fail = fail)
 }
+
+# Snapshot & restore the registry around a test.
+local_registry <- function(env = parent.frame()) {
+  old <- as.list(.snapp_registry)
+  withr::defer({
+    rm(list = ls(.snapp_registry), envir = .snapp_registry)
+    for (nm in names(old)) assign(nm, old[[nm]], envir = .snapp_registry)
+  }, envir = env)
+  rm(list = ls(.snapp_registry), envir = .snapp_registry)
+}
