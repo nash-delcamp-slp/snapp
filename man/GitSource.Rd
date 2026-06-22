@@ -11,6 +11,13 @@ Git snapshot source
 \section{Super class}{
 \code{\link[snapp:SnapshotSource]{snapp::SnapshotSource}} -> \code{GitSource}
 }
+\section{Public fields}{
+\if{html}{\out{<div class="r6-fields">}}
+\describe{
+\item{\code{repo}}{Absolute path to the git repository root.}
+}
+\if{html}{\out{</div>}}
+}
 \section{Methods}{
 \subsection{Public methods}{
 \itemize{
@@ -32,37 +39,84 @@ Git snapshot source
 \if{html}{\out{<a id="method-GitSource-new"></a>}}
 \if{latex}{\out{\hypertarget{method-GitSource-new}{}}}
 \subsection{Method \code{new()}}{
+Create a GitSource.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{GitSource$new(repo, name = NULL)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{repo}}{Path to the git repository root.}
+
+\item{\code{name}}{Optional human-readable instance name.}
+}
+\if{html}{\out{</div>}}
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-GitSource-list_snapshots"></a>}}
 \if{latex}{\out{\hypertarget{method-GitSource-list_snapshots}{}}}
 \subsection{Method \code{list_snapshots()}}{
+List snapshots (commits) for a file path.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{GitSource$list_snapshots(path)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{path}}{Absolute file path within the repository.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+tibble(id, label, time).
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-GitSource-read_file"></a>}}
 \if{latex}{\out{\hypertarget{method-GitSource-read_file}{}}}
 \subsection{Method \code{read_file()}}{
+Read raw file bytes at a specific commit.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{GitSource$read_file(path, id)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{path}}{Absolute file path within the repository.}
+
+\item{\code{id}}{Commit SHA from `list_snapshots()`.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+raw vector of file bytes.
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-GitSource-list_tree"></a>}}
 \if{latex}{\out{\hypertarget{method-GitSource-list_tree}{}}}
 \subsection{Method \code{list_tree()}}{
+List directory entries at a snapshot.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{GitSource$list_tree(path, id = NULL)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{path}}{Absolute file or directory path within the repository.}
+
+\item{\code{id}}{Optional commit SHA; defaults to HEAD.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+tibble(path, type).
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-GitSource-clone"></a>}}

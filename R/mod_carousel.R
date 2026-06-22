@@ -6,9 +6,9 @@ mod_carousel_ui <- function(id) {
     full_screen = TRUE,
     bslib::card_header(
       shiny::div(class = "carousel-bar",
-        shiny::actionButton(ns("prev"), "◀", class = "btn-sm"),
+        shiny::actionButton(ns("prev"), "\u25C0", class = "btn-sm"),
         shiny::span(class = "carousel-crumb", shiny::textOutput(ns("crumb"), inline = TRUE)),
-        shiny::actionButton(ns("nxt"), "▶", class = "btn-sm"),
+        shiny::actionButton(ns("nxt"), "\u25B6", class = "btn-sm"),
         shiny::actionButton(ns("pin"), "\U0001F4CC Pin", class = "btn-sm"),
         shiny::radioButtons(ns("view"), NULL, inline = TRUE,
                             choices = c("side-by-side", "unified"), selected = "side-by-side")
@@ -78,7 +78,7 @@ mod_carousel_server <- function(id, timeline, selected_path, active_sources,
     output$crumb <- shiny::renderText({
       tl <- timeline(); cur <- idx()
       if (is.null(cur) || nrow(tl) == 0) return("No history")
-      sprintf("%s · frame %d of %d · %s",
+      sprintf("%s \u00B7 frame %d of %d \u00B7 %s",
               basename(selected_path() %||% ""), cur, nrow(tl), tl$source[cur])
     })
 

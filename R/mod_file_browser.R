@@ -4,8 +4,8 @@
 mod_file_browser_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList(
-    shiny::textInput(ns("search"), NULL, placeholder = "Search files…"),
-    shinyTree::shinyTreeOutput(ns("tree"))
+    shiny::textInput(ns("search"), NULL, placeholder = "Search files\u2026"),
+    shinyTree::shinyTree(ns("tree"))
   )
 }
 

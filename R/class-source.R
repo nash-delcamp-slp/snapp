@@ -1,6 +1,7 @@
 #' Abstract snapshot source
 #'
 #' Subclass and implement `list_snapshots()`, `read_file()`, `list_tree()`.
+#' @importFrom R6 R6Class
 #' @export
 SnapshotSource <- R6::R6Class(
   "SnapshotSource",

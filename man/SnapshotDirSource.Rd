@@ -4,11 +4,28 @@
 \alias{SnapshotDirSource}
 \title{Generalized filesystem-snapshot source}
 \description{
+Generalized filesystem-snapshot source
+
+Generalized filesystem-snapshot source
+}
+\details{
 Reads point-in-time copies from a set of snapshot directories (e.g. ZFS
 `.zfs/snapshot/<stamp>/`). `id` is the absolute snapshot directory path.
 }
 \section{Super class}{
 \code{\link[snapp:SnapshotSource]{snapp::SnapshotSource}} -> \code{SnapshotDirSource}
+}
+\section{Public fields}{
+\if{html}{\out{<div class="r6-fields">}}
+\describe{
+\item{\code{dataset_root}}{Absolute path to the live dataset root.}
+
+\item{\code{snapshot_glob}}{Glob pattern that expands to snapshot directories.}
+
+\item{\code{time_from}}{Named list with `regex` and optional `format` for parsing
+snapshot timestamps from directory names; NULL to use mtime.}
+}
+\if{html}{\out{</div>}}
 }
 \section{Methods}{
 \subsection{Public methods}{
@@ -33,6 +50,7 @@ Reads point-in-time copies from a set of snapshot directories (e.g. ZFS
 \if{html}{\out{<a id="method-SnapshotDirSource-new"></a>}}
 \if{latex}{\out{\hypertarget{method-SnapshotDirSource-new}{}}}
 \subsection{Method \code{new()}}{
+Create a SnapshotDirSource.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{SnapshotDirSource$new(
   dataset_root,
@@ -42,51 +60,116 @@ Reads point-in-time copies from a set of snapshot directories (e.g. ZFS
 )}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{dataset_root}}{Path to the live dataset root.}
+
+\item{\code{snapshot_glob}}{Glob pattern that expands to snapshot directories.}
+
+\item{\code{time_from}}{Named list with `regex`/`format` for timestamp parsing, or NULL.}
+
+\item{\code{name}}{Optional human-readable instance name.}
+}
+\if{html}{\out{</div>}}
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-SnapshotDirSource-snapshot_dirs"></a>}}
 \if{latex}{\out{\hypertarget{method-SnapshotDirSource-snapshot_dirs}{}}}
 \subsection{Method \code{snapshot_dirs()}}{
+Expand the snapshot glob to a character vector of snapshot directories.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{SnapshotDirSource$snapshot_dirs()}\if{html}{\out{</div>}}
 }
 
+\subsection{Returns}{
+Character vector of absolute snapshot directory paths.
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-SnapshotDirSource-snapshot_time"></a>}}
 \if{latex}{\out{\hypertarget{method-SnapshotDirSource-snapshot_time}{}}}
 \subsection{Method \code{snapshot_time()}}{
+Extract a POSIXct timestamp from a snapshot directory path.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{SnapshotDirSource$snapshot_time(dir)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{dir}}{Absolute path to a snapshot directory.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+POSIXct timestamp.
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-SnapshotDirSource-list_snapshots"></a>}}
 \if{latex}{\out{\hypertarget{method-SnapshotDirSource-list_snapshots}{}}}
 \subsection{Method \code{list_snapshots()}}{
+List snapshots containing a given file path.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{SnapshotDirSource$list_snapshots(path)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{path}}{Absolute file path within the dataset root.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+tibble(id, label, time).
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-SnapshotDirSource-read_file"></a>}}
 \if{latex}{\out{\hypertarget{method-SnapshotDirSource-read_file}{}}}
 \subsection{Method \code{read_file()}}{
+Read raw file bytes from a snapshot.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{SnapshotDirSource$read_file(path, id)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{path}}{Absolute file path within the dataset root.}
+
+\item{\code{id}}{Absolute snapshot directory path from `list_snapshots()`.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+raw vector of file bytes.
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-SnapshotDirSource-list_tree"></a>}}
 \if{latex}{\out{\hypertarget{method-SnapshotDirSource-list_tree}{}}}
 \subsection{Method \code{list_tree()}}{
+List directory entries across snapshots.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{SnapshotDirSource$list_tree(path, id = NULL)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{path}}{Absolute file or directory path within the dataset root.}
+
+\item{\code{id}}{Optional snapshot directory path to restrict to; NULL scans all snapshots.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+tibble(path, type) with deduplicated live dataset paths.
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-SnapshotDirSource-clone"></a>}}

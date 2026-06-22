@@ -39,11 +39,20 @@ GitSource <- R6::R6Class(
   "GitSource",
   inherit = SnapshotSource,
   public = list(
+    #' @field repo Absolute path to the git repository root.
     repo = NULL,
+
+    #' @description Create a GitSource.
+    #' @param repo Path to the git repository root.
+    #' @param name Optional human-readable instance name.
     initialize = function(repo, name = NULL) {
       super$initialize(name)
       self$repo <- fs::path_abs(repo)
     },
+
+    #' @description List snapshots (commits) for a file path.
+    #' @param path Absolute file path within the repository.
+    #' @return tibble(id, label, time).
     list_snapshots = function(path) {
       rel <- fs::path_rel(path, self$repo)
       out <- git_run(self$repo, c("log", "--follow",
@@ -60,10 +69,19 @@ GitSource <- R6::R6Class(
         time = as.POSIXct(as.numeric(m[, 2]), origin = "1970-01-01", tz = "UTC")
       )
     },
+    #' @description Read raw file bytes at a specific commit.
+    #' @param path Absolute file path within the repository.
+    #' @param id Commit SHA from `list_snapshots()`.
+    #' @return raw vector of file bytes.
     read_file = function(path, id) {
       rel <- fs::path_rel(path, self$repo)
       git_read_raw(self$repo, paste0(id, ":", rel))
     },
+
+    #' @description List directory entries at a snapshot.
+    #' @param path Absolute file or directory path within the repository.
+    #' @param id Optional commit SHA; defaults to HEAD.
+    #' @return tibble(path, type).
     list_tree = function(path, id = NULL) {
       ref <- id %||% "HEAD"
       rel <- if (fs::is_dir(path)) fs::path_rel(path, self$repo) else fs::path_rel(fs::path_dir(path), self$repo)

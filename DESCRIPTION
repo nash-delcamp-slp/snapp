@@ -15,8 +15,6 @@ Imports:
     diffobj,
     fs,
     golem,
-    htmltools,
-    memoise,
     R6,
     rlang,
     shiny,

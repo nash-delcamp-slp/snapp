@@ -22,16 +22,35 @@ SnapshotDirSource <- R6::R6Class(
   "SnapshotDirSource",
   inherit = SnapshotSource,
   public = list(
+    #' @field dataset_root Absolute path to the live dataset root.
     dataset_root = NULL,
+
+    #' @field snapshot_glob Glob pattern that expands to snapshot directories.
     snapshot_glob = NULL,
+
+    #' @field time_from Named list with `regex` and optional `format` for parsing
+    #'   snapshot timestamps from directory names; NULL to use mtime.
     time_from = NULL,
+
+    #' @description Create a SnapshotDirSource.
+    #' @param dataset_root Path to the live dataset root.
+    #' @param snapshot_glob Glob pattern that expands to snapshot directories.
+    #' @param time_from Named list with `regex`/`format` for timestamp parsing, or NULL.
+    #' @param name Optional human-readable instance name.
     initialize = function(dataset_root, snapshot_glob, time_from = NULL, name = NULL) {
       super$initialize(name)
       self$dataset_root  <- fs::path_abs(dataset_root)
       self$snapshot_glob <- snapshot_glob
       self$time_from     <- time_from
     },
+
+    #' @description Expand the snapshot glob to a character vector of snapshot directories.
+    #' @return Character vector of absolute snapshot directory paths.
     snapshot_dirs = function() Sys.glob(self$snapshot_glob),
+
+    #' @description Extract a POSIXct timestamp from a snapshot directory path.
+    #' @param dir Absolute path to a snapshot directory.
+    #' @return POSIXct timestamp.
     snapshot_time = function(dir) {
       tf <- self$time_from
       if (!is.null(tf) && !is.null(tf$regex)) {
@@ -43,6 +62,9 @@ SnapshotDirSource <- R6::R6Class(
       }
       as.POSIXct(file.info(dir)$mtime)
     },
+    #' @description List snapshots containing a given file path.
+    #' @param path Absolute file path within the dataset root.
+    #' @return tibble(id, label, time).
     list_snapshots = function(path) {
       rel <- fs::path_rel(path, self$dataset_root)
       dirs <- self$snapshot_dirs()
@@ -57,11 +79,21 @@ SnapshotDirSource <- R6::R6Class(
         time = do.call(c, lapply(hits, function(d) self$snapshot_time(d)))
       )
     },
+
+    #' @description Read raw file bytes from a snapshot.
+    #' @param path Absolute file path within the dataset root.
+    #' @param id Absolute snapshot directory path from `list_snapshots()`.
+    #' @return raw vector of file bytes.
     read_file = function(path, id) {
       rel <- fs::path_rel(path, self$dataset_root)
       target <- fs::path(id, rel)
       readBin(target, "raw", n = file.info(target)$size %||% 0)
     },
+
+    #' @description List directory entries across snapshots.
+    #' @param path Absolute file or directory path within the dataset root.
+    #' @param id Optional snapshot directory path to restrict to; NULL scans all snapshots.
+    #' @return tibble(path, type) with deduplicated live dataset paths.
     list_tree = function(path, id = NULL) {
       rel_dir <- if (fs::is_dir(path)) fs::path_rel(path, self$dataset_root)
                  else fs::path_rel(fs::path_dir(path), self$dataset_root)
