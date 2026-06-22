@@ -3,6 +3,9 @@
 ^data-raw$
 dev_history.R
 ^dev$
-$run_dev.*
+^run_dev\.R$
 ^.here$
 ^LICENSE\.md$
+^\.superpowers$
+^docs$
+^\.git$
