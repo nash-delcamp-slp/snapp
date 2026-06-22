@@ -1,0 +1,16 @@
+.carousel-bar { display: flex; align-items: center; gap: .5rem; }
+.carousel-crumb { flex: 1; font-size: .85rem; opacity: .8; }
+.carousel-empty { padding: 2rem; text-align: center; opacity: .7; }
+.carousel-timeline { padding: .75rem .5rem 0; }
+.tl-track { position: relative; display: flex; gap: 6px; align-items: center;
+            border-top: 2px solid rgba(127,127,127,.35); padding-top: 10px; }
+.tl-dot { width: 12px; height: 12px; border-radius: 50%; background: #888; display: inline-block; }
+.tl-dot.is-current { box-shadow: 0 0 0 3px rgba(0,0,0,.25); }
+.tl-dot.is-baseline { outline: 2px solid #2188ff; }
+.tl-dot.src-gitsource { background: #e36209; }
+.tl-dot.src-snapshotdirsource { background: #2188ff; }
+.tl-dot.src-unknown { background: #888; }
+.img-compare { display: flex; gap: 8px; }
+.img-compare .img-pane { flex: 1; border: 1px solid rgba(127,127,127,.3); padding: 4px; }
+.source-row { display: flex; align-items: center; gap: .4rem; }
+.sidebar-footer { margin-top: auto; padding-top: 1rem; }

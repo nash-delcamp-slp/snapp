@@ -32,10 +32,19 @@ mod_carousel_server <- function(id, timeline, selected_path, active_sources,
     idx      <- shiny::reactiveVal(NULL)   # current frame index (1-based)
     baseline <- shiny::reactiveVal(NULL)   # pinned index or NULL
 
+    src_classes <- shiny::reactive({
+      srcs <- active_sources()
+      if (length(srcs) == 0) return(stats::setNames(character(0), character(0)))
+      stats::setNames(
+        vapply(srcs, function(s) paste0("src-", tolower(class(s)[[1]])), character(1)),
+        vapply(srcs, function(s) s$name, character(1))
+      )
+    })
+
     # When the timeline changes, default to the newest frame, clear pin.
     shiny::observeEvent(timeline(), {
       n <- nrow(timeline())
-      idx(if (n > 0) n else NULL)
+      if (is.null(n) || n == 0) idx(NULL) else idx(n)
       baseline(NULL)
     }, ignoreNULL = FALSE)
 
@@ -84,7 +93,7 @@ mod_carousel_server <- function(id, timeline, selected_path, active_sources,
 
     output$timeline <- shiny::renderUI({
       tl <- timeline(); if (nrow(tl) == 0) return(NULL)
-      render_timeline_bar(tl, idx(), baseline())
+      render_timeline_bar(tl, idx(), baseline(), src_classes())
     })
 
     # expose state for tests
@@ -115,10 +124,13 @@ render_compare <- function(left, right, path, view) {
 
 #' Render the timeline scrubber bar (source-colored dots)
 #' @noRd
-render_timeline_bar <- function(tl, cur, base) {
+render_timeline_bar <- function(tl, cur, base, src_classes = NULL) {
   n <- nrow(tl)
   dots <- lapply(seq_len(n), function(i) {
-    cls <- paste("tl-dot", paste0("src-", make.names(tl$source[i])))
+    token <- if (!is.null(src_classes) && tl$source[i] %in% names(src_classes)) {
+      src_classes[[tl$source[i]]]
+    } else "src-unknown"
+    cls <- paste("tl-dot", token)
     if (!is.null(cur) && i == cur) cls <- paste(cls, "is-current")
     if (!is.null(base) && i == base) cls <- paste(cls, "is-baseline")
     shiny::span(class = cls, title = paste(tl$source[i], format(tl$time[i])))

@@ -1,41 +1,30 @@
 #' The application User-Interface
-#'
 #' @param request Internal parameter for `{shiny}`.
-#'     DO NOT REMOVE.
-#' @import shiny
 #' @noRd
 app_ui <- function(request) {
-  tagList(
-    # Leave this function for adding external resources
+  shiny::tagList(
     golem_add_external_resources(),
-    # Your application UI logic
-    fluidPage(
-      golem::golem_welcome_page() # Remove this line to start building your UI
+    bslib::page_sidebar(
+      title = "snapp",
+      sidebar = bslib::sidebar(
+        width = 300,
+        bslib::accordion(
+          bslib::accordion_panel("Sources", mod_sources_ui("sources")),
+          bslib::accordion_panel("Files", mod_file_browser_ui("browser"))
+        ),
+        shiny::div(class = "sidebar-footer", mod_settings_ui("settings"))
+      ),
+      mod_carousel_ui("carousel")
     )
   )
 }
 
 #' Add external Resources to the Application
-#'
-#' This function is internally used to add external
-#' resources inside the Shiny application.
-#'
-#' @import shiny
-#' @importFrom golem add_resource_path activate_js favicon bundle_resources
 #' @noRd
 golem_add_external_resources <- function() {
-  add_resource_path(
-    "www",
-    app_sys("app/www")
-  )
-
-  tags$head(
-    favicon(),
-    bundle_resources(
-      path = app_sys("app/www"),
-      app_title = "snapp"
-    )
-    # Add here other external resources
-    # for example, you can add shinyalert::useShinyalert()
+  golem::add_resource_path("www", app_sys("app/www"))
+  shiny::tags$head(
+    golem::favicon(),
+    golem::bundle_resources(path = app_sys("app/www"), app_title = "snapp")
   )
 }
