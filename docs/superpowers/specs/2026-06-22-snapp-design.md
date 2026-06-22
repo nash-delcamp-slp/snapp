@@ -21,6 +21,8 @@ history in a **diff carousel**.
 - Explore a file's history over time across one or more snapshot sources.
 - A modular source system: new methods are added by registering an R6 subclass.
 - Combined timelines: multiple sources contribute to one file's history.
+- Discoverable sources: snapp auto-detects applicable sources (e.g. a git repo or a
+  ZFS dataset) from the path being explored, so they need not be hand-configured.
 - A diff carousel that steps through consecutive snapshots **and** compares two
   arbitrary snapshots.
 - Handle text (rich diffs) and images (visual comparison); degrade gracefully on
@@ -57,6 +59,9 @@ filesystem directly — it calls domain functions and renders the result.
     - `read_file(path, id)` → `character` (lines) or `raw`
     - `list_tree(path, id = NULL)` → `tibble(path, type)`
   - Shared helper for classifying content type (text / image / other).
+  - Optional **discovery** hook, provided per type at registration (see registry):
+    `detect(path)` ascends from `path` and returns zero or more candidate source
+    configs (`list(name, type, params)`) that would apply to it.
 - **`GitSource`** — `class-source-git.R`, `gert`-backed. `list_snapshots` = git log
   for the path → `(id = sha, label = summary, time = commit time)`; `read_file` =
   blob at `sha:relpath`; `list_tree` = `git ls-tree`. Param: `repo`.
@@ -73,9 +78,13 @@ filesystem directly — it calls domain functions and renders the result.
   - The `zfs` type is this class registered with `.zfs/snapshot` default params; the
     user can still override the globs. Generalizes to NetApp `.snapshot`, Time
     Machine, or any folder-of-timestamped-copies layout.
-- **Source registry** — `registry.R`: `register_source_type(type, generator)`,
-  `source_types()`, `new_source(type, params)`. Built-ins (`git`, `zfs`) registered
-  in `.onLoad`. Users register custom types from their own startup code.
+- **Source registry** — `registry.R`: `register_source_type(type, generator, detect = NULL)`,
+  `source_types()`, `new_source(type, params)`, and
+  `discover_sources(path)` — runs every registered type's `detect(path)` and returns
+  the combined list of candidate source configs (deduped by `(type, params)`).
+  Built-ins (`git`, `zfs`) registered in `.onLoad`, each with a `detect` that ascends
+  the path looking for a `.git` dir / a `.zfs/snapshot` dir respectively. Users
+  register custom types (and optional detectors) from their own startup code.
 - **Config** — `config.R`: `config_path()` (default `~/.snapp/config.yml`,
   overridable), `read_config()`, `write_config()`, `default_config()`,
   `validate_config()`.
@@ -93,9 +102,10 @@ filesystem directly — it calls domain functions and renders the result.
 A thin reactive skin: `run_app.R`, `app_ui.R`, `app_server.R`, `app_config.R`, plus
 modules:
 
-- **`mod_sources`** — sidebar: configured sources with enable toggles; "add/edit
-  source" button opens a modal (type dropdown from the registry + dynamic param
-  fields).
+- **`mod_sources`** — sidebar: configured sources with enable toggles, plus
+  **discovered** sources surfaced by `discover_sources()` (each with a "save to
+  config" affordance); "add/edit source" button opens a modal (type dropdown from the
+  registry + dynamic param fields).
 - **`mod_file_browser`** — search box + tree (union of enabled sources); emits the
   selected file path.
 - **`mod_carousel`** — the hybrid diff carousel (see UX below).
@@ -122,15 +132,21 @@ is a snapshot; color encodes its source).
   arbitrary points. Unpin returns to consecutive stepping.
 - Clicking any timeline dot jumps directly to it.
 - A view toggle switches side-by-side vs unified (default from config).
-- Content rendering by type: text → rich diff; image → visual compare; other binary
-  → size/hash summary.
+- Content rendering by type: text → rich diff; image → **side-by-side** visual
+  compare (matching the text-diff layout); other binary → size/hash summary.
 
 ## Config schema (`~/.snapp/config.yml`)
+
+`config.yml` *persists* sources the user has saved — manually added or saved from
+discovery. It is not the only way sources appear: `discover_sources(path)` surfaces
+applicable sources automatically (see Data flow), and the user can run with zero
+configured sources and rely entirely on discovery.
 
 ```yaml
 settings:
   default_view: side-by-side   # or "unified"
-sources:
+  auto_discover: true          # run discover_sources() on startup / path select
+sources:                       # persisted (saved manually or from discovery)
   - name: "project git"
     type: git
     enabled: true
@@ -149,7 +165,9 @@ sources:
 **Startup:** `run_app()` → `read_config()` (creates default if missing) → for each
 `sources` entry, `new_source(type, params)` via the registry (invalid/unknown entries
 skipped with a logged warning) → instances held in `sources_rv` with their `enabled`
-flags.
+flags. When `auto_discover` is on, `discover_sources()` also runs (at startup against
+the launch dir, and when a path is selected) and its candidates are merged into
+`sources_rv` as discovered (unsaved) sources the user can enable or persist.
 
 **Core reactive chain** (in `app_server`, passed to modules):
 
@@ -204,13 +222,16 @@ substantive, not placeholder.
   error-isolation path (inject a throwing fake; assert it's dropped, others survive).
 - **Config:** round-trip read/write, default creation, validation rejects.
 - **Registry:** register/instantiate, unknown-type error.
+- **Discovery:** `detect` for git and snapshot-dir against fixture trees (repo found by
+  ascending; `.zfs/snapshot` found; nothing found → empty), and `discover_sources`
+  merging/deduping candidates from multiple types.
 - **Diff/content:** type classification and text-diff output shape.
 - **Shiny modules:** `testServer` for `mod_carousel` reactive logic — index clamping,
   pin/unpin pane selection, default-to-newest — with an injected timeline.
 
 ## Open questions / deferred
 
-- Image comparison interaction detail (side-by-side vs overlay/slider) — decide during
-  carousel implementation.
-- Whether to add an optional class-level `detect(path)` hook to suggest applicable
-  sources when adding one (discoverability nicety) — deferred, not in core read path.
+- Image comparison may later gain an overlay/slider mode; **side-by-side** is the
+  decided starting point.
+- Discovery (`detect`/`discover_sources`) is in scope. A future enhancement could
+  cache or rank candidates when many sources match a deep path; not needed initially.
