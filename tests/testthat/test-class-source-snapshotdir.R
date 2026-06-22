@@ -1,17 +1,3 @@
-# Build dataset_root with two timestamped snapshot dirs each containing R/model.R
-make_snapdir_fixture <- function(env = parent.frame()) {
-  root <- withr::local_tempdir(.local_envir = env)
-  snap_base <- fs::dir_create(fs::path(root, ".zfs", "snapshot"))
-  s1 <- fs::dir_create(fs::path(snap_base, "snap-2026-01-01T00:00:00", "R"))
-  s2 <- fs::dir_create(fs::path(snap_base, "snap-2026-02-01T00:00:00", "R"))
-  writeLines("v1", fs::path(s1, "model.R"))
-  writeLines("v2", fs::path(s2, "model.R"))
-  # the live file
-  fs::dir_create(fs::path(root, "R"))
-  writeLines("v2", fs::path(root, "R", "model.R"))
-  root
-}
-
 test_that("SnapshotDirSource lists snapshots with time parsed from dir name", {
   root <- make_snapdir_fixture()
   src <- SnapshotDirSource$new(
