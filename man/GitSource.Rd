@@ -108,7 +108,7 @@ List directory entries at a snapshot.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{path}}{Absolute file or directory path within the repository.}
+\item{\code{path}}{Absolute file or directory path within the repository, or NULL for the repo root.}
 
 \item{\code{id}}{Optional commit SHA; defaults to HEAD.}
 }

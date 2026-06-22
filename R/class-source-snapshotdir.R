@@ -91,21 +91,22 @@ SnapshotDirSource <- R6::R6Class(
     },
 
     #' @description List directory entries across snapshots.
-    #' @param path Absolute file or directory path within the dataset root.
+    #' @param path Absolute file or directory path within the dataset root, or NULL for the dataset root.
     #' @param id Optional snapshot directory path to restrict to; NULL scans all snapshots.
     #' @return tibble(path, type) with deduplicated live dataset paths.
     list_tree = function(path, id = NULL) {
+      path <- path %||% self$dataset_root
       rel_dir <- if (fs::is_dir(path)) fs::path_rel(path, self$dataset_root)
                  else fs::path_rel(fs::path_dir(path), self$dataset_root)
       dirs <- if (is.null(id)) self$snapshot_dirs() else id
       rows <- lapply(dirs, function(d) {
-        base <- fs::path(d, rel_dir)
+        base <- if (identical(as.character(rel_dir), ".")) d else fs::path(d, rel_dir)
         if (!fs::dir_exists(base)) return(NULL)
-        entries <- fs::dir_ls(base)
+        entries <- fs::dir_ls(base, recurse = TRUE, type = "file")
+        if (length(entries) == 0) return(NULL)
         tibble::tibble(
-          # map snapshot path back to the live dataset path
           path = as.character(fs::path(self$dataset_root, fs::path_rel(entries, d))),
-          type = ifelse(fs::is_dir(entries), "dir", "file")
+          type = "file"
         )
       })
       out <- do.call(rbind, c(list(tibble::tibble(path = character(), type = character())), rows))

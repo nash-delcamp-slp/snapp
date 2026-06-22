@@ -161,7 +161,7 @@ List directory entries across snapshots.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{path}}{Absolute file or directory path within the dataset root.}
+\item{\code{path}}{Absolute file or directory path within the dataset root, or NULL for the dataset root.}
 
 \item{\code{id}}{Optional snapshot directory path to restrict to; NULL scans all snapshots.}
 }

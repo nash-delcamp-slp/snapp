@@ -79,29 +79,22 @@ GitSource <- R6::R6Class(
     },
 
     #' @description List directory entries at a snapshot.
-    #' @param path Absolute file or directory path within the repository.
+    #' @param path Absolute file or directory path within the repository, or NULL for the repo root.
     #' @param id Optional commit SHA; defaults to HEAD.
     #' @return tibble(path, type).
     list_tree = function(path, id = NULL) {
-      ref <- id %||% "HEAD"
-      rel <- if (fs::is_dir(path)) fs::path_rel(path, self$repo) else fs::path_rel(fs::path_dir(path), self$repo)
-      arg <- if (identical(as.character(rel), ".")) ref else paste0(ref, ":", rel)
-      # git ls-tree default output: <mode> <type> <sha>\t<name>
-      # --format was added in git 2.36; fall back to parsing default output for compatibility.
-      out <- tryCatch(git_run(self$repo, c("ls-tree", arg)),
-                      error = function(e) character())
+      ref  <- id %||% "HEAD"
+      path <- path %||% self$repo
+      rel  <- if (fs::is_dir(path)) fs::path_rel(path, self$repo)
+              else fs::path_rel(fs::path_dir(path), self$repo)
+      args <- c("ls-tree", "-r", "--name-only", ref)
+      if (!identical(as.character(rel), ".")) args <- c(args, as.character(rel))
+      out <- tryCatch(git_run(self$repo, args), error = function(e) character())
       out <- out[nzchar(out)]
       if (length(out) == 0) return(tibble::tibble(path = character(), type = character()))
-      # Split on tab to get left part (mode type sha) and right part (filename)
-      parts <- strsplit(out, "\t", fixed = TRUE)
-      names_vec <- vapply(parts, `[[`, character(1), 2)
-      left_vec  <- vapply(parts, `[[`, character(1), 1)
-      # type is the second space-separated token in the left part
-      types_raw <- vapply(strsplit(left_vec, " "), `[[`, character(1), 2)
-      base <- if (identical(as.character(rel), ".")) self$repo else fs::path(self$repo, rel)
       tibble::tibble(
-        path = as.character(fs::path(base, names_vec)),
-        type = ifelse(types_raw == "tree", "dir", "file")
+        path = as.character(fs::path(self$repo, out)),
+        type = "file"
       )
     }
   )

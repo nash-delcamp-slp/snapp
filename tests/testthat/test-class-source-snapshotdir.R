@@ -28,3 +28,18 @@ test_that("find_zfs_root ascends to the dataset with a .zfs/snapshot dir", {
   expect_equal(normalizePath(find_zfs_root(fs::path(root, "R"))), normalizePath(root))
   expect_null(find_zfs_root(withr::local_tempdir()))
 })
+
+test_that("SnapshotDirSource list_tree(NULL) lists files mapped to live dataset paths", {
+  root <- make_snapdir_fixture()
+  src <- SnapshotDirSource$new(
+    dataset_root = root,
+    snapshot_glob = fs::path(root, ".zfs", "snapshot", "*"),
+    time_from = list(regex = "snap-(.*)", format = "%Y-%m-%dT%H:%M:%S"),
+    name = "zfs")
+  tr <- src$list_tree(NULL)
+  # must surface the live dataset path for the snapshotted file, recursively under R/
+  expect_true(any(grepl("R/model.R$", tr$path)))
+  expect_true(all(tr$type == "file"))
+  # paths must be under the live dataset_root, NOT inside .zfs/snapshot
+  expect_false(any(grepl("\\.zfs/snapshot", tr$path)))
+})

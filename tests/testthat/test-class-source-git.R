@@ -23,3 +23,13 @@ test_that("GitSource list_tree returns files under the repo", {
   tr <- src$list_tree(file.path(repo, "R"))
   expect_true(any(basename(tr$path) == "model.R"))
 })
+
+test_that("GitSource list_tree(NULL) lists all tracked files recursively", {
+  repo <- make_fixture_repo()
+  src <- GitSource$new(repo = repo, name = "git")
+  tr <- src$list_tree(NULL)          # how the file browser calls it (repo root)
+  expect_true(any(basename(tr$path) == "model.R"))
+  expect_true(all(tr$type == "file"))
+  # the file lives under R/, so a recursive listing must include the nested path
+  expect_true(any(grepl("R/model.R$", tr$path)))
+})

@@ -14,3 +14,11 @@ test_that("merge_tree isolates a failing source", {
   expect_warning(tr <- merge_tree(list(good, bad)), class = "snapp_source_error")
   expect_equal(tr$path, "/p/x.R")
 })
+
+test_that("merge_tree lists files from a real GitSource via list_tree(NULL)", {
+  repo <- make_fixture_repo()
+  src <- GitSource$new(repo = repo, name = "git")
+  tr <- merge_tree(list(src))     # path = NULL, exactly as the file browser calls it
+  expect_gt(nrow(tr), 0)
+  expect_true(any(basename(tr$path) == "model.R"))
+})
