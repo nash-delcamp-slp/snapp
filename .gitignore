@@ -1,0 +1,19 @@
+# Brainstorming / visual-companion scratch
+.superpowers/
+
+# R / RStudio
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# Package build artifacts
+/*.tar.gz
+/*.Rcheck/
+src/*.o
+src/*.so
+src/*.dll
+
+# OS
+.DS_Store
