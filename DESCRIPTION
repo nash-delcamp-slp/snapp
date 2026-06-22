@@ -1,0 +1,29 @@
+Package: snapp
+Title: Explore File Snapshots Over Time
+Version: 0.0.0.9000
+Authors@R: person("Nash", "Delcamp", email = "nash.delcamp@simulations-plus.com", role = c("aut", "cre"))
+Description: A Shiny application for comparing file snapshots across time using
+    pluggable snapshot sources (git and generalized filesystem snapshots), with a
+    diff carousel for exploring a file's history.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Imports:
+    bslib,
+    base64enc,
+    cli,
+    config,
+    diffobj,
+    fs,
+    golem,
+    htmltools,
+    memoise,
+    R6,
+    rlang,
+    shiny,
+    shinyTree,
+    tibble,
+    yaml
+Suggests:
+    testthat (>= 3.0.0),
+    withr
+Config/testthat/edition: 3
