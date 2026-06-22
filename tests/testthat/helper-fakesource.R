@@ -4,6 +4,7 @@
 FakeSource <- R6::R6Class(
   "FakeSource",
   inherit = SnapshotSource,
+  lock_objects = FALSE,
   public = list(
     data = NULL,
     fail = FALSE,
