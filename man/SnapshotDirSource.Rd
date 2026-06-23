@@ -22,10 +22,9 @@ Reads point-in-time copies from a set of snapshot directories (e.g. ZFS
 
 \item{\code{snapshot_glob}}{Glob pattern that expands to snapshot directories.}
 
-\item{\code{time_from}}{Optional named list with `regex` and optional `format` (scalar
-or character vector of formats tried in order) for parsing snapshot timestamps
-from snapshot directory names. When NULL, falls back to the snapshot directory
-mtime. The `zfs` preset supplies a default that parses `YYYY-MM-DD_HHMM` tokens.}
+\item{\code{time_from}}{Optional override: when set, snapshot timestamps are parsed from
+the snapshot directory NAME (`list(regex, format)`); otherwise the file's own
+mtime is used.}
 }
 \if{html}{\out{</div>}}
 }
@@ -94,27 +93,30 @@ Character vector of absolute snapshot directory paths.
 \if{html}{\out{<a id="method-SnapshotDirSource-snapshot_time"></a>}}
 \if{latex}{\out{\hypertarget{method-SnapshotDirSource-snapshot_time}{}}}
 \subsection{Method \code{snapshot_time()}}{
-Extract a POSIXct timestamp from a snapshot directory name.
+Timestamp for a snapshot copy of a file.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SnapshotDirSource$snapshot_time(dir)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{SnapshotDirSource$snapshot_time(dir, file)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{dir}}{Absolute path to a snapshot directory.}
+\item{\code{dir}}{Absolute snapshot directory path.}
+
+\item{\code{file}}{Absolute path to the file inside that snapshot.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-POSIXct timestamp (parsed from the dir name via `time_from`, else the dir mtime).
+POSIXct. Parsed from the snapshot dir NAME if `time_from` is set
+  (and matches); otherwise the file's own mtime.
 }
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-SnapshotDirSource-list_snapshots"></a>}}
 \if{latex}{\out{\hypertarget{method-SnapshotDirSource-list_snapshots}{}}}
 \subsection{Method \code{list_snapshots()}}{
-List snapshots containing a given file path.
+List the distinct versions of a file across snapshots.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{SnapshotDirSource$list_snapshots(path)}\if{html}{\out{</div>}}
 }
@@ -127,8 +129,9 @@ List snapshots containing a given file path.
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-tibble(id, label, time) of every snapshot that contains the file,
-  ordered ascending by time. `id` is the absolute snapshot directory path.
+tibble(id, label, time), one row per distinct version (snapshots
+  sharing a timestamp are collapsed), ordered ascending by time. `id` is the
+  absolute snapshot directory path of the earliest snapshot holding that version.
 }
 }
 \if{html}{\out{<hr>}}

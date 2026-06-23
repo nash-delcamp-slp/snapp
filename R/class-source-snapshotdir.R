@@ -28,10 +28,9 @@ SnapshotDirSource <- R6::R6Class(
     #' @field snapshot_glob Glob pattern that expands to snapshot directories.
     snapshot_glob = NULL,
 
-    #' @field time_from Optional named list with `regex` and optional `format` (scalar
-    #'   or character vector of formats tried in order) for parsing snapshot timestamps
-    #'   from snapshot directory names. When NULL, falls back to the snapshot directory
-    #'   mtime. The `zfs` preset supplies a default that parses `YYYY-MM-DD_HHMM` tokens.
+    #' @field time_from Optional override: when set, snapshot timestamps are parsed from
+    #'   the snapshot directory NAME (`list(regex, format)`); otherwise the file's own
+    #'   mtime is used.
     time_from = NULL,
 
     #' @description Create a SnapshotDirSource.
@@ -50,10 +49,12 @@ SnapshotDirSource <- R6::R6Class(
     #' @return Character vector of absolute snapshot directory paths.
     snapshot_dirs = function() Sys.glob(self$snapshot_glob),
 
-    #' @description Extract a POSIXct timestamp from a snapshot directory name.
-    #' @param dir Absolute path to a snapshot directory.
-    #' @return POSIXct timestamp (parsed from the dir name via `time_from`, else the dir mtime).
-    snapshot_time = function(dir) {
+    #' @description Timestamp for a snapshot copy of a file.
+    #' @param dir Absolute snapshot directory path.
+    #' @param file Absolute path to the file inside that snapshot.
+    #' @return POSIXct. Parsed from the snapshot dir NAME if `time_from` is set
+    #'   (and matches); otherwise the file's own mtime.
+    snapshot_time = function(dir, file) {
       tf <- self$time_from
       if (!is.null(tf) && !is.null(tf$regex)) {
         m <- regmatches(basename(dir), regexec(tf$regex, basename(dir)))[[1]]
@@ -64,31 +65,33 @@ SnapshotDirSource <- R6::R6Class(
           }
         }
       }
-      as.POSIXct(file.info(dir)$mtime, tz = "UTC")
+      as.POSIXct(file.info(file)$mtime, tz = "UTC")
     },
 
-    #' @description List snapshots containing a given file path.
+    #' @description List the distinct versions of a file across snapshots.
     #' @param path Absolute file path within the dataset root.
-    #' @return tibble(id, label, time) of every snapshot that contains the file,
-    #'   ordered ascending by time. `id` is the absolute snapshot directory path.
+    #' @return tibble(id, label, time), one row per distinct version (snapshots
+    #'   sharing a timestamp are collapsed), ordered ascending by time. `id` is the
+    #'   absolute snapshot directory path of the earliest snapshot holding that version.
     list_snapshots = function(path) {
       empty <- tibble::tibble(id = character(), label = character(),
                               time = as.POSIXct(character()))
       rel <- as.character(fs::path_rel(path, self$dataset_root))
       if (identical(rel, ".")) return(empty)
       rel_depth <- length(fs::path_split(rel)[[1]])
-      # Glob the FULL file path across snapshots (forces ZFS auto-mount; reliable cold).
-      matched <- Sys.glob(file.path(self$snapshot_glob, rel))
+      matched <- Sys.glob(file.path(self$snapshot_glob, rel))   # full-path glob (reliable)
       if (length(matched) == 0) return(empty)
-      # Recover each snapshot directory by stripping the `rel` suffix (rel_depth segments).
       snapdirs <- vapply(matched, function(m) {
         d <- m
         for (k in seq_len(rel_depth)) d <- fs::path_dir(d)
         as.character(fs::path_abs(d))
       }, character(1), USE.NAMES = FALSE)
-      times <- do.call(c, lapply(snapdirs, function(d) self$snapshot_time(d)))
+      times <- do.call(c, Map(function(d, f) self$snapshot_time(d, f), snapdirs, matched))
       o <- order(times)
-      tibble::tibble(id = snapdirs[o], label = basename(snapdirs[o]), time = times[o])
+      snapdirs <- snapdirs[o]
+      times <- times[o]
+      keep <- !duplicated(times)                                 # collapse identical versions
+      tibble::tibble(id = snapdirs[keep], label = basename(snapdirs[keep]), time = times[keep])
     },
 
     #' @description Read raw file bytes from a snapshot.

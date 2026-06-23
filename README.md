@@ -111,6 +111,8 @@ Reads point-in-time copies from ZFS `.zfs/snapshot/<stamp>/` directories. Auto-d
 src <- snapp::new_source("zfs", list(dataset_root = "/tank/data"))
 ```
 
+Snapshot versions are timed by each file's own modification time, and copies that share an mtime are collapsed to a single entry (keeping the earliest snapshot of that version); `time_from` is an optional override to parse the timestamp from the snapshot directory name instead.
+
 `SnapshotDirSource` can also be used directly for any filesystem-snapshot layout (not just ZFS):
 
 ```r
