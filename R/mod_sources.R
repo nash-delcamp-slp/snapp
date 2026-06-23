@@ -32,7 +32,11 @@ mod_sources_server <- function(id, config_rv, discovered = shiny::reactive(list(
         inst$name <- s$name
         list(inst = inst, enabled = FALSE, key = s$name, saved = FALSE)
       })
-      Filter(Negate(is.null), c(conf, disc))
+      conf <- Filter(Negate(is.null), conf)
+      disc <- Filter(Negate(is.null), disc)
+      any_conf_enabled <- any(vapply(conf, function(x) isTRUE(x$enabled), logical(1)))
+      if (!any_conf_enabled && length(disc) > 0) disc[[1]]$enabled <- TRUE
+      c(conf, disc)
     })
 
     output$list <- shiny::renderUI({

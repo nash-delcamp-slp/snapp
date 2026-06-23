@@ -9,6 +9,7 @@ app_ui <- function(request) {
       sidebar = bslib::sidebar(
         width = 300,
         bslib::accordion(
+          open = c("Sources", "Files"),
           bslib::accordion_panel("Sources", mod_sources_ui("sources")),
           bslib::accordion_panel("Files", mod_file_browser_ui("browser"))
         ),

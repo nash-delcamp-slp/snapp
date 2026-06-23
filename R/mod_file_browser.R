@@ -3,7 +3,7 @@
 mod_file_browser_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList(
-    shiny::textInput(ns("search"), NULL, placeholder = "Search files…"),
+    shiny::textInput(ns("search"), NULL, placeholder = "Search files\u2026"),
     shiny::uiOutput(ns("breadcrumb")),
     shiny::uiOutput(ns("listing"))
   )
@@ -116,7 +116,7 @@ mod_file_browser_server <- function(id, active_sources) {
       ui <- shiny::div(class = "nav-list", do.call(shiny::tagList, rows))
       if (total > cap) {
         ui <- shiny::tagList(ui, shiny::div(class = "nav-empty",
-          sprintf("…and %d more — use search to narrow.", total - cap)))
+          sprintf("\u2026and %d more \u2014 use search to narrow.", total - cap)))
       }
       ui
     })

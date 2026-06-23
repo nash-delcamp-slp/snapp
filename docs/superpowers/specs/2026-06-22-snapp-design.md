@@ -55,16 +55,18 @@ filesystem directly — it calls domain functions and renders the result.
 - **`SnapshotSource` (abstract R6)** — `class-source.R`
   - Field: `name`.
   - Abstract methods:
+    - `root()` → the source's top-level directory for navigation
     - `list_snapshots(path)` → `tibble(id, label, time, ...)`
     - `read_file(path, id)` → `character` (lines) or `raw`
-    - `list_tree(path, id = NULL)` → `tibble(path, type)`
+    - `list_children(path = NULL)` → `tibble(name, path, type)` — immediate children of one directory level (`NULL` = source root; `type` is "dir"/"file"); fault-tolerant (errors return empty tibble with a warning)
   - Shared helper for classifying content type (text / image / other).
   - Optional **discovery** hook, provided per type at registration (see registry):
     `detect(path)` ascends from `path` and returns zero or more candidate source
     configs (`list(name, type, params)`) that would apply to it.
 - **`GitSource`** — `class-source-git.R`, `gert`-backed. `list_snapshots` = git log
   for the path → `(id = sha, label = summary, time = commit time)`; `read_file` =
-  blob at `sha:relpath`; `list_tree` = `git ls-tree`. Param: `repo`.
+  blob at `sha:relpath`; `root()` = repo working directory; `list_children` = one-level
+  directory listing via git. Param: `repo`.
 - **`SnapshotDirSource`** — `class-source-snapshotdir.R`. Generalized
   filesystem-snapshot source driven entirely by config:
     - `dataset_root` — live path the snapshots mirror; used to compute a file's
@@ -74,7 +76,8 @@ filesystem directly — it calls domain functions and renders the result.
       dir name, falling back to directory mtime if unspecified.
   - Given a requested file: `relpath = path − dataset_root`; for each snapshot dir,
     check `<snapshot_dir>/<relpath>`. `list_snapshots` emits one entry per dir where
-    it exists; `read_file` reads that copy; `list_tree` unions the dir listings.
+    it exists; `read_file` reads that copy; `root()` returns `dataset_root`;
+    `list_children` lists one directory level (union across snapshot dirs).
   - The `zfs` type is this class registered with `.zfs/snapshot` default params; the
     user can still override the globs. Generalizes to NetApp `.snapshot`, Time
     Machine, or any folder-of-timestamped-copies layout.
@@ -91,8 +94,9 @@ filesystem directly — it calls domain functions and renders the result.
 - **Timeline** — `timeline.R`: `build_timeline(path, sources)` →
   merged, time-sorted `tibble(source, id, label, time, type)`. Isolates per-source
   errors (a failing source is dropped with a warning; others proceed).
-- **Tree** — `tree.R`: `merge_tree(path, sources)` → unioned directory tree for the
-  browser.
+- **Navigator** — `navigator.R`: `merge_children(sources, path)` → one-level unioned
+  directory listing; `find_files(sources, root, pattern)` → bounded recursive search
+  for the file browser's search mode.
 - **Content + diff** — `content.R`, `diff.R`: `fetch_content(entry, sources)`;
   `render_text_diff(a, b)` via `diffobj`; `compare_images(a, b)`; binary fallback
   (size + hash).
@@ -106,8 +110,10 @@ modules:
   **discovered** sources surfaced by `discover_sources()` (each with a "save to
   config" affordance); "add/edit source" button opens a modal (type dropdown from the
   registry + dynamic param fields).
-- **`mod_file_browser`** — search box + tree (union of enabled sources); emits the
-  selected file path.
+- **`mod_file_browser`** — directory navigator: breadcrumb + one-level listing + bounded
+  search (backed by `merge_children` and `find_files`). Union of enabled sources; emits
+  the selected file path. Lists one directory level at a time so large/deep datasets
+  stay responsive.
 - **`mod_carousel`** — the hybrid diff carousel (see UX below).
 - **`mod_settings`** — settings modal that edits `config.yml` via a form, writing
   through `write_config()`.
@@ -172,8 +178,8 @@ the launch dir, and when a path is selected) and its candidates are merged into
 **Core reactive chain** (in `app_server`, passed to modules):
 
 - `active_sources()` — subset of `sources_rv` toggled on in `mod_sources`.
-- `selected_path()` — `reactiveVal` set by `mod_file_browser`. The tree is
-  `reactive(merge_tree(active_sources()))`, recomputed on toggle change.
+- `selected_path()` — `reactiveVal` set by `mod_file_browser`. The browser directory
+  is recomputed on toggle change via `merge_children(active_sources(), path)`.
 - `timeline()` — `reactive(build_timeline(selected_path(), active_sources()))`.
   Empty path → `NULL` → carousel empty state.
 - Carousel state (in `mod_carousel`):

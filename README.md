@@ -31,11 +31,14 @@ All snapshot sources implement the `SnapshotSource` R6 class interface:
 
 | Method | Signature | Returns |
 |--------|-----------|---------|
+| `root` | `()` | the source's top-level directory for navigation |
 | `list_snapshots` | `(path)` | `tibble(id, label, time)` — one row per snapshot containing that file |
 | `read_file` | `(path, id)` | `raw` vector of file bytes at that snapshot |
-| `list_tree` | `(path, id = NULL)` | `tibble(path, type)` — directory listing at that snapshot |
+| `list_children` | `(path = NULL)` | `tibble(name, path, type)` — immediate children of a directory (one level; `type` is "dir"/"file"); `NULL` = source root |
 
-The `id` column from `list_snapshots()` is an opaque key passed back to `read_file()` and `list_tree()`.
+The `id` column from `list_snapshots()` is an opaque key passed back to `read_file()`.
+
+The file browser is a lazy directory navigator: it lists one directory level at a time via `list_children`, so large/deep datasets stay responsive.
 
 ## Registering a custom source type
 
@@ -48,11 +51,12 @@ library(R6)
 MySource <- R6Class("MySource",
   inherit = snapp::SnapshotSource,
   public = list(
-    root = NULL,
+    root_path = NULL,
     initialize = function(root, name = NULL) {
       super$initialize(name)
-      self$root <- root
+      self$root_path <- root
     },
+    root = function() self$root_path,
     list_snapshots = function(path) {
       # Return a tibble with columns: id, label, time
       tibble::tibble(
@@ -64,8 +68,10 @@ MySource <- R6Class("MySource",
     read_file = function(path, id) {
       readBin(path, "raw", n = file.info(path)$size)
     },
-    list_tree = function(path, id = NULL) {
-      tibble::tibble(path = character(), type = character())
+    list_children = function(path = NULL) {
+      # Return a tibble(name, path, type) of immediate children of `path`
+      # (path = NULL means the source root). type is "dir" or "file".
+      tibble::tibble(name = character(), path = character(), type = character())
     }
   )
 )
