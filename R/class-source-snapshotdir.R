@@ -30,8 +30,8 @@ SnapshotDirSource <- R6::R6Class(
 
     #' @field time_from Optional named list with `regex` and optional `format` (scalar
     #'   or character vector of formats tried in order) for parsing snapshot timestamps
-    #'   from directory names. When NULL (the default), timing uses the file's own mtime
-    #'   inside the snapshot directory.
+    #'   from snapshot directory names. When NULL, falls back to the snapshot directory
+    #'   mtime. The `zfs` preset supplies a default that parses `YYYY-MM-DD_HHMM` tokens.
     time_from = NULL,
 
     #' @description Create a SnapshotDirSource.
@@ -50,13 +50,10 @@ SnapshotDirSource <- R6::R6Class(
     #' @return Character vector of absolute snapshot directory paths.
     snapshot_dirs = function() Sys.glob(self$snapshot_glob),
 
-    #' @description Extract a POSIXct timestamp from a snapshot directory path.
+    #' @description Extract a POSIXct timestamp from a snapshot directory name.
     #' @param dir Absolute path to a snapshot directory.
-    #' @param file Optional absolute path to the specific file inside the snapshot;
-    #'   when provided (and `time_from` is not set), its mtime is used instead of
-    #'   the directory mtime.
-    #' @return POSIXct timestamp.
-    snapshot_time = function(dir, file = NULL) {
+    #' @return POSIXct timestamp (parsed from the dir name via `time_from`, else the dir mtime).
+    snapshot_time = function(dir) {
       tf <- self$time_from
       if (!is.null(tf) && !is.null(tf$regex)) {
         m <- regmatches(basename(dir), regexec(tf$regex, basename(dir)))[[1]]
@@ -67,25 +64,31 @@ SnapshotDirSource <- R6::R6Class(
           }
         }
       }
-      target <- file %||% dir
-      as.POSIXct(file.info(target)$mtime, tz = "UTC")
+      as.POSIXct(file.info(dir)$mtime, tz = "UTC")
     },
 
     #' @description List snapshots containing a given file path.
     #' @param path Absolute file path within the dataset root.
-    #' @return tibble(id, label, time).
+    #' @return tibble(id, label, time) of every snapshot that contains the file,
+    #'   ordered ascending by time. `id` is the absolute snapshot directory path.
     list_snapshots = function(path) {
-      rel  <- fs::path_rel(path, self$dataset_root)
-      dirs <- self$snapshot_dirs()
-      hits <- unlist(Filter(function(d) fs::file_exists(fs::path(d, rel)), dirs))
       empty <- tibble::tibble(id = character(), label = character(),
                               time = as.POSIXct(character()))
-      if (length(hits) == 0) return(empty)
-      times <- do.call(c, lapply(hits, function(d) self$snapshot_time(d, fs::path(d, rel))))
-      o <- order(times); hits <- hits[o]; times <- times[o]
-      keep <- !duplicated(times)            # collapse unchanged (identical-mtime) versions
-      hits <- hits[keep]; times <- times[keep]
-      tibble::tibble(id = as.character(fs::path_abs(hits)), label = basename(hits), time = times)
+      rel <- as.character(fs::path_rel(path, self$dataset_root))
+      if (identical(rel, ".")) return(empty)
+      rel_depth <- length(fs::path_split(rel)[[1]])
+      # Glob the FULL file path across snapshots (forces ZFS auto-mount; reliable cold).
+      matched <- Sys.glob(file.path(self$snapshot_glob, rel))
+      if (length(matched) == 0) return(empty)
+      # Recover each snapshot directory by stripping the `rel` suffix (rel_depth segments).
+      snapdirs <- vapply(matched, function(m) {
+        d <- m
+        for (k in seq_len(rel_depth)) d <- fs::path_dir(d)
+        as.character(fs::path_abs(d))
+      }, character(1), USE.NAMES = FALSE)
+      times <- do.call(c, lapply(snapdirs, function(d) self$snapshot_time(d)))
+      o <- order(times)
+      tibble::tibble(id = snapdirs[o], label = basename(snapdirs[o]), time = times[o])
     },
 
     #' @description Read raw file bytes from a snapshot.

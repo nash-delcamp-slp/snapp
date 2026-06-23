@@ -16,12 +16,6 @@ test_that("SnapshotDirSource lists snapshots with time parsed from dir name", {
 
 test_that("SnapshotDirSource falls back to mtime when time_from is NULL", {
   root <- make_snapdir_fixture()
-  # Set distinct file mtimes so dedupe keeps both rows after Change 1b
-  snap_base <- fs::path(root, ".zfs", "snapshot")
-  Sys.setFileTime(fs::path(snap_base, "snap-2026-01-01T00:00:00", "R", "model.R"),
-                  as.POSIXct("2026-01-01 00:00:00", tz = "UTC"))
-  Sys.setFileTime(fs::path(snap_base, "snap-2026-02-01T00:00:00", "R", "model.R"),
-                  as.POSIXct("2026-02-01 00:00:00", tz = "UTC"))
   src <- SnapshotDirSource$new(dataset_root = root,
     snapshot_glob = fs::path(root, ".zfs", "snapshot", "*"), name = "zfs")
   snaps <- src$list_snapshots(fs::path(root, "R", "model.R"))
@@ -29,28 +23,27 @@ test_that("SnapshotDirSource falls back to mtime when time_from is NULL", {
   expect_s3_class(snaps$time, "POSIXct")
 })
 
-test_that("SnapshotDirSource times by file mtime and collapses identical versions", {
+test_that("zfs preset lists ALL snapshots containing a file, ordered by dir-name datetime", {
   root <- withr::local_tempdir()
   base <- fs::dir_create(fs::path(root, ".zfs", "snapshot"))
-  mk <- function(snap, content, mtime) {
-    d <- fs::dir_create(fs::path(base, snap, "R"))
-    f <- fs::path(d, "model.R"); writeLines(content, f)
-    Sys.setFileTime(f, mtime); f
+  snap_names <- c("snap_incr-2026-05-31_0915", "snap_incr-2026-05-31_1315",
+                  "snap_daily-2026-05-31_1815", "snap_monthly-2026-06-01_0100")
+  fixed_mtime <- as.POSIXct("2026-01-01 00:00:00", tz = "UTC")
+  for (i in seq_along(snap_names)) {
+    d <- fs::dir_create(fs::path(base, snap_names[i], "sub", "deep"))
+    f <- fs::path(d, "f.R")
+    writeLines(paste0("v", i), f)
+    Sys.setFileTime(f, fixed_mtime)   # identical file mtimes -> old code collapses to 1 row
   }
-  # v1 at Jan; v2 at Mar; v2 again unchanged in a later snapshot (same mtime as the Mar one)
-  mk("snap1", "v1", as.POSIXct("2026-01-01 00:00:00", tz = "UTC"))
-  mar <- as.POSIXct("2026-03-01 00:00:00", tz = "UTC")
-  mk("snap2", "v2", mar)
-  mk("snap3", "v2", mar)                  # unchanged -> identical mtime -> collapses
-  fs::dir_create(fs::path(root, "R")); writeLines("v2", fs::path(root, "R", "model.R"))
+  fs::dir_create(fs::path(root, "sub", "deep")); writeLines("live", fs::path(root, "sub", "deep", "f.R"))
 
-  src <- new_source("zfs", list(dataset_root = root))   # no time_from -> file mtime
-  snaps <- src$list_snapshots(fs::path(root, "R", "model.R"))
-  expect_equal(nrow(snaps), 2)                          # snap2/snap3 collapsed
-  expect_true(all(diff(as.numeric(snaps$time)) > 0))    # strictly increasing
-  # oldest reads "v1"
-  oldest <- snaps$id[which.min(snaps$time)]
-  expect_equal(trimws(rawToChar(src$read_file(fs::path(root,"R","model.R"), oldest))), "v1")
+  src <- new_source("zfs", list(dataset_root = root))     # preset defaults: glob + time_from
+  snaps <- src$list_snapshots(fs::path(root, "sub", "deep", "f.R"))
+  expect_equal(nrow(snaps), 4)                            # ALL snapshots, no collapse
+  expect_equal(snaps$label, snap_names)                   # datetime order matches
+  expect_true(all(diff(as.numeric(snaps$time)) > 0))      # strictly increasing
+  # id is the snapshot dir; read_file reconstructs and reads the right version
+  expect_equal(trimws(rawToChar(src$read_file(fs::path(root,"sub","deep","f.R"), snaps$id[1]))), "v1")
 })
 
 test_that("find_zfs_root ascends to the dataset with a .zfs/snapshot dir", {
