@@ -3,7 +3,10 @@
 mod_file_browser_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList(
-    shiny::textInput(ns("search"), NULL, placeholder = "Search files\u2026"),
+    shiny::div(class = "nav-search",
+      shiny::textInput(ns("search"), NULL, placeholder = "Search files\u2026"),
+      shiny::checkboxInput(ns("recursive"), "Recursive", value = FALSE)
+    ),
     shiny::uiOutput(ns("breadcrumb")),
     shiny::uiOutput(ns("listing"))
   )
@@ -26,12 +29,18 @@ mod_file_browser_server <- function(id, active_sources) {
       unique(vapply(srcs, function(s) as.character(s$root()), character(1)))
     })
 
+    default_dir <- function(rs) {
+      wd <- tryCatch(as.character(fs::path_abs(getwd())), error = function(e) NULL)
+      if (!is.null(wd) && any(vapply(rs, function(r) is_ancestor_or_equal(r, wd), logical(1)))) return(wd)
+      if (length(rs) == 1) rs[[1]] else NULL
+    }
+
     # Initialize / repair current_dir when the source set changes.
     shiny::observeEvent(active_sources(), {
       rs <- roots(); cd <- current_dir()
       if (length(rs) == 0) { current_dir(NULL); return() }
       under <- !is.null(cd) && any(vapply(rs, function(r) is_ancestor_or_equal(r, cd), logical(1)))
-      if (!under) current_dir(if (length(rs) == 1) rs[[1]] else NULL)
+      if (!under) current_dir(default_dir(rs))
     }, ignoreNULL = FALSE)
 
     searching <- shiny::reactive(!is.null(input$search) && nzchar(input$search))
@@ -50,17 +59,22 @@ mod_file_browser_server <- function(id, active_sources) {
     search_results <- shiny::reactive({
       empty <- tibble::tibble(name = character(), path = character(), type = character())
       if (!searching()) return(NULL)
-      cd <- current_dir()
-      bases <- if (is.null(cd)) roots() else cd
-      if (length(bases) == 0) return(empty)
-      parts <- lapply(bases, function(b) find_files(active_sources(), b, input$search))
-      res <- do.call(rbind, c(list(empty), parts))
-      res <- res[!duplicated(res$path), , drop = FALSE]
-      tibble::as_tibble(utils::head(res, 300L))
+      if (isTRUE(input$recursive)) {
+        cd <- current_dir(); bases <- if (is.null(cd)) roots() else cd
+        if (length(bases) == 0) return(empty)
+        parts <- lapply(bases, function(b) find_files(active_sources(), b, input$search))
+        res <- do.call(rbind, c(list(empty), parts))
+        res <- res[!duplicated(res$path), , drop = FALSE]
+        return(tibble::as_tibble(utils::head(res, 300L)))
+      }
+      # non-recursive: filter the current directory's immediate entries (dirs + files)
+      q <- tolower(input$search)
+      df <- entries()
+      df[grepl(q, tolower(df$name), fixed = TRUE), , drop = FALSE]
     })
 
     output$breadcrumb <- shiny::renderUI({
-      if (length(active_sources()) == 0 || searching()) return(NULL)
+      if (length(active_sources()) == 0 || (searching() && isTRUE(input$recursive))) return(NULL)
       cd <- current_dir(); rs <- roots()
       crumb_link <- function(path, label) {
         shiny::tags$a(href = "#", class = "nav-seg", `data-path` = path,
@@ -106,7 +120,7 @@ mod_file_browser_server <- function(id, active_sources) {
       rows <- lapply(seq_len(nrow(df_shown)), function(i) {
         is_dir <- df_shown$type[i] == "dir"
         glyph  <- if (is_dir) "\U0001F4C2" else "\U0001F4C4"
-        label  <- if (searching()) df_shown$path[i] else df_shown$name[i]
+        label  <- if (searching() && isTRUE(input$recursive)) df_shown$path[i] else df_shown$name[i]
         shiny::tags$a(href = "#",
           class = paste("nav-entry", if (is_dir) "is-dir" else "is-file"),
           `data-path` = df_shown$path[i],

@@ -25,3 +25,6 @@
 .nav-entry.is-dir { font-weight: 500; }
 .nav-icon { width: 1.2em; display: inline-block; }
 .nav-empty { padding: 1rem .25rem; opacity: .7; font-size: .85rem; }
+.nav-search { display: flex; align-items: center; gap: .5rem; }
+.nav-search .form-group { margin-bottom: 0; flex: 1; }
+.nav-search .checkbox { margin: 0; white-space: nowrap; font-size: .85rem; }
