@@ -107,6 +107,30 @@ test_that("render_compare shows per-side hashes and a differs/identical badge", 
   expect_match(html3, "EEEEEEEEEEEE")
 })
 
+test_that("render_timeline_bar positions dots by time and renders an adaptive axis", {
+  tl <- tibble::tibble(
+    source = rep("git", 3), id = c("a", "b", "c"), label = c("a", "b", "c"),
+    time = as.POSIXct(c("2026-01-01", "2026-01-06", "2026-01-11"), tz = "UTC"))
+  html <- as.character(render_timeline_bar(tl, 1L, 3L, FALSE, FALSE, src_classes = NULL,
+                                           ns = identity, labeller = function(i) paste0("frame", i)))
+  expect_match(html, "tl-dot")
+  expect_match(html, "data-idx")
+  expect_match(html, "left:")               # absolute positioning by time
+  expect_match(html, "tl-tick")             # adaptive tick axis rendered
+  expect_match(html, "is-left")             # left marker on dot 1
+  expect_match(html, "is-right")            # right marker on dot 3
+  # middle dot at ~50% (2026-01-06 is the midpoint of Jan 1..Jan 11)
+  expect_match(html, "left:50")
+})
+
+test_that("render_timeline_bar handles a single version (zero span) without error", {
+  tl <- tibble::tibble(source = "git", id = "a", label = "a",
+                       time = as.POSIXct("2026-01-01", tz = "UTC"))
+  html <- as.character(render_timeline_bar(tl, 1L, 1L, FALSE, FALSE))
+  expect_match(html, "tl-dot")
+  expect_match(html, "left:50")             # centered when span is zero
+})
+
 test_that("stale index beyond a newly-shorter timeline does not crash the body", {
   src <- FakeSource$new(name = "fake", root = "/p",
     data = list("/p/a.R" = list(

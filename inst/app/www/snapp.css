@@ -2,9 +2,11 @@
 .carousel-crumb { flex: 1; font-size: .85rem; opacity: .8; }
 .carousel-empty { padding: 2rem; text-align: center; opacity: .7; }
 .carousel-timeline { padding: .75rem .5rem 0; }
-.tl-track { position: relative; display: flex; gap: 6px; align-items: center;
-            border-top: 2px solid rgba(127,127,127,.35); padding-top: 10px; }
-.tl-dot { width: 12px; height: 12px; border-radius: 50%; background: #888; display: inline-block; cursor: pointer; }
+.tl-track { position: relative; height: 40px; margin: 10px 8px 4px; border-top: 2px solid rgba(127,127,127,.35); }
+.tl-dot { position: absolute; top: -7px; transform: translateX(-50%); width: 12px; height: 12px; border-radius: 50%; background: #888; display: inline-block; cursor: pointer; }
+.tl-tick { position: absolute; top: 0; }
+.tl-tick-mark { width: 1px; height: 5px; background: rgba(127,127,127,.5); transform: translateX(-50%); }
+.tl-tick-label { position: absolute; top: 6px; transform: translateX(-50%); font-size: .7rem; opacity: .7; white-space: nowrap; }
 /* Marker hues mirror diffobj "yb" light palette: old/target = yellow, new/current = blue */
 :root { --snapp-side-old: #aaaa55; --snapp-side-new: #3333bb; }
 .tl-dot.is-left   { box-shadow: 0 0 0 2px var(--bs-body-bg, #fff), 0 0 0 4px var(--snapp-side-old); }

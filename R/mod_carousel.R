@@ -187,11 +187,15 @@ render_compare <- function(left, right, path, view,
   shiny::tagList(badge, body)
 }
 
-#' Render the clickable timeline scrubber (left/right markers, pinned, source color)
+#' Render the time-proportional timeline (dots placed by timestamp + adaptive tick axis)
 #' @noRd
 render_timeline_bar <- function(tl, left_i, right_i, left_pin = FALSE, right_pin = FALSE,
                                 src_classes = NULL, ns = identity, labeller = NULL) {
   n <- nrow(tl)
+  if (n == 0) return(NULL)
+  from <- min(tl$time); to <- max(tl$time)
+  pos <- time_positions(tl$time, from, to)
+
   dots <- lapply(seq_len(n), function(i) {
     token <- if (!is.null(src_classes) && tl$source[i] %in% names(src_classes)) src_classes[[tl$source[i]]] else "src-unknown"
     cls <- paste("tl-dot", token)
@@ -201,7 +205,19 @@ render_timeline_bar <- function(tl, left_i, right_i, left_pin = FALSE, right_pin
         (isTRUE(right_pin) && !is.null(right_i) && i == right_i)) cls <- paste(cls, "is-pinned")
     title <- if (!is.null(labeller)) labeller(i) else paste(tl$source[i], format(tl$time[i]))
     shiny::tags$a(href = "#", class = cls, `data-idx` = i, title = title,
+      style = sprintf("left:%.4f%%;", pos[i]),
       onclick = sprintf("Shiny.setInputValue('%s', this.getAttribute('data-idx'), {priority:'event'});", ns("frame")))
   })
-  shiny::div(class = "tl-track", dots)
+
+  ticks <- time_axis_ticks(from, to)
+  tpos  <- time_positions(ticks$time, from, to)
+  tick_els <- lapply(seq_len(nrow(ticks)), function(j) {
+    shiny::div(class = "tl-tick", style = sprintf("left:%.4f%%;", tpos[j]),
+      shiny::div(class = "tl-tick-mark"),
+      shiny::div(class = "tl-tick-label", ticks$label[j]))
+  })
+
+  shiny::div(class = "tl-track",
+    do.call(shiny::tagList, tick_els),
+    do.call(shiny::tagList, dots))
 }
