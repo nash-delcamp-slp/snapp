@@ -28,8 +28,9 @@ SnapshotDirSource <- R6::R6Class(
     #' @field snapshot_glob Glob pattern that expands to snapshot directories.
     snapshot_glob = NULL,
 
-    #' @field time_from Named list with `regex` and optional `format` for parsing
-    #'   snapshot timestamps from directory names; NULL to use mtime.
+    #' @field time_from Named list with `regex` and optional `format` (scalar or
+    #'   character vector of formats tried in order) for parsing snapshot timestamps
+    #'   from directory names; NULL to use mtime.
     time_from = NULL,
 
     #' @description Create a SnapshotDirSource.
@@ -56,11 +57,13 @@ SnapshotDirSource <- R6::R6Class(
       if (!is.null(tf) && !is.null(tf$regex)) {
         m <- regmatches(basename(dir), regexec(tf$regex, basename(dir)))[[1]]
         if (length(m) >= 2) {
-          t <- as.POSIXct(m[[2]], format = tf$format %||% "%Y-%m-%dT%H:%M:%S", tz = "UTC")
-          if (!is.na(t)) return(t)
+          for (fmt in (tf$format %||% "%Y-%m-%dT%H:%M:%S")) {
+            t <- as.POSIXct(m[[2]], format = fmt, tz = "UTC")
+            if (!is.na(t)) return(t)
+          }
         }
       }
-      as.POSIXct(file.info(dir)$mtime)
+      as.POSIXct(file.info(dir)$mtime, tz = "UTC")
     },
     #' @description List snapshots containing a given file path.
     #' @param path Absolute file path within the dataset root.

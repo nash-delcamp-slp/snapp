@@ -22,8 +22,9 @@ Reads point-in-time copies from a set of snapshot directories (e.g. ZFS
 
 \item{\code{snapshot_glob}}{Glob pattern that expands to snapshot directories.}
 
-\item{\code{time_from}}{Named list with `regex` and optional `format` for parsing
-snapshot timestamps from directory names; NULL to use mtime.}
+\item{\code{time_from}}{Named list with `regex` and optional `format` (scalar or
+character vector of formats tried in order) for parsing snapshot timestamps
+from directory names; NULL to use mtime.}
 }
 \if{html}{\out{</div>}}
 }
