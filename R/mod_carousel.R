@@ -36,6 +36,7 @@ mod_carousel_server <- function(id, timeline, selected_path, active_sources,
     left_pin   <- shiny::reactiveVal(FALSE)
     right_pin  <- shiny::reactiveVal(FALSE)
     next_click <- shiny::reactiveVal("left")
+    view_range <- shiny::reactiveVal(NULL)   # c(from, to) POSIXct window; NULL = full span
 
     src_classes <- shiny::reactive({
       srcs <- active_sources()
@@ -46,16 +47,35 @@ mod_carousel_server <- function(id, timeline, selected_path, active_sources,
       )
     })
 
-    shiny::observeEvent(timeline(), {
-      n <- nrow(timeline())
+    full_range <- shiny::reactive({
+      tl <- timeline()
+      if (is.null(tl) || nrow(tl) == 0) return(NULL)
+      c(min(tl$time), max(tl$time))
+    })
+    eff_range <- shiny::reactive(view_range() %||% full_range())
+
+    visible_tl <- shiny::reactive({
+      tl <- timeline()
+      if (is.null(tl) || nrow(tl) == 0) return(tl)
+      vr <- eff_range()
+      if (is.null(vr)) return(tl)
+      tl[tl$time >= vr[[1]] & tl$time <= vr[[2]], , drop = FALSE]
+    })
+
+    # New file -> drop any brush window.
+    shiny::observeEvent(timeline(), { view_range(NULL) }, ignoreNULL = FALSE)
+
+    # Frames changed (new file OR brush) -> reset comparison to newest visible, clear pins.
+    shiny::observeEvent(visible_tl(), {
+      n <- nrow(visible_tl())
       if (is.null(n) || n == 0) { right_idx(NULL); left_idx(NULL) }
-      else { right_idx(n); left_idx(if (n > 1) n - 1 else NULL) }
+      else { right_idx(n); left_idx(if (n > 1) n - 1L else NULL) }
       left_pin(FALSE); right_pin(FALSE); next_click("left")
       shiny::updateActionButton(session, "pin_left",  label = "\U0001F4CC Pin left")
       shiny::updateActionButton(session, "pin_right", label = "\U0001F4CC Pin right")
     }, ignoreNULL = FALSE)
 
-    n_frames <- shiny::reactive(nrow(timeline()))
+    n_frames <- shiny::reactive(nrow(visible_tl()))
     clamp <- function(x, n) max(1L, min(n, x))
 
     step <- function(delta) {
@@ -73,14 +93,12 @@ mod_carousel_server <- function(id, timeline, selected_path, active_sources,
     shiny::observeEvent(input$prev, step(-1L))
     shiny::observeEvent(input$nxt,  step(+1L))
     shiny::observeEvent(input$pin_left, {
-      left_pin(!left_pin())
-      next_click("left")
+      left_pin(!left_pin()); next_click("left")
       shiny::updateActionButton(session, "pin_left",
         label = if (left_pin()) "\U0001F4CC Unpin left" else "\U0001F4CC Pin left")
     })
     shiny::observeEvent(input$pin_right, {
-      right_pin(!right_pin())
-      next_click("left")
+      right_pin(!right_pin()); next_click("left")
       shiny::updateActionButton(session, "pin_right",
         label = if (right_pin()) "\U0001F4CC Unpin right" else "\U0001F4CC Pin right")
     })
@@ -96,14 +114,23 @@ mod_carousel_server <- function(id, timeline, selected_path, active_sources,
       else if (rp && !lp) { left_idx(i) }
     })
 
+    # Brush window (date range). Wired now; the slider UI that drives it comes later.
+    shiny::observeEvent(input$brush, {
+      vr <- input$brush
+      if (is.null(vr) || length(vr) != 2) return()
+      from <- as.POSIXct(paste0(as.Date(vr[[1]]), " 00:00:00"), tz = "UTC")
+      to   <- as.POSIXct(paste0(as.Date(vr[[2]]), " 23:59:59"), tz = "UTC")
+      view_range(c(from, to))
+    }, ignoreInit = TRUE)
+
     pane_content <- function(i) {
-      tl <- timeline()
+      tl <- visible_tl()
       if (is.null(i) || nrow(tl) == 0 || i < 1 || i > nrow(tl)) return(NULL)
       fetch_content(selected_path(), as.list(tl[i, ]), active_sources())
     }
 
     frame_label <- function(i) {
-      tl <- timeline()
+      tl <- visible_tl()
       if (is.null(i) || nrow(tl) == 0 || i < 1 || i > nrow(tl)) return(NULL)
       base <- tl$label[i]
       tok  <- if (tl$source[i] %in% names(src_classes())) src_classes()[[tl$source[i]]] else ""
@@ -112,10 +139,12 @@ mod_carousel_server <- function(id, timeline, selected_path, active_sources,
     }
 
     output$crumb <- shiny::renderText({
-      tl <- timeline()
+      tl <- visible_tl(); full <- timeline()
       if (is.null(right_idx()) || nrow(tl) == 0) return("No history")
-      sprintf("%s \u00B7 %d frame%s", basename(selected_path() %||% ""),
-              nrow(tl), if (nrow(tl) == 1) "" else "s")
+      n <- nrow(tl); m <- if (is.null(full)) n else nrow(full)
+      windowed <- !is.null(view_range()) && n < m
+      base <- sprintf("%s \u00B7 %d frame%s", basename(selected_path() %||% ""), n, if (n == 1) "" else "s")
+      if (windowed) paste0(base, sprintf(" (of %d)", m)) else base
     })
 
     output$body <- shiny::renderUI({
@@ -131,13 +160,16 @@ mod_carousel_server <- function(id, timeline, selected_path, active_sources,
     })
 
     output$timeline <- shiny::renderUI({
-      tl <- timeline(); if (nrow(tl) == 0) return(NULL)
+      tl <- visible_tl(); if (is.null(tl) || nrow(tl) == 0) return(NULL)
+      er <- eff_range()
       render_timeline_bar(tl, left_idx(), right_idx(), left_pin(), right_pin(),
-                          src_classes(), ns, labeller = frame_label)
+                          src_classes(), ns, labeller = frame_label,
+                          from = er[[1]], to = er[[2]])
     })
 
-    list(left_idx = left_idx, right_idx = right_idx,
-         left_pin = left_pin, right_pin = right_pin, next_click = next_click)
+    list(left_idx = left_idx, right_idx = right_idx, left_pin = left_pin,
+         right_pin = right_pin, next_click = next_click,
+         view_range = view_range, visible_tl = visible_tl)
   })
 }
 
@@ -190,10 +222,12 @@ render_compare <- function(left, right, path, view,
 #' Render the time-proportional timeline (dots placed by timestamp + adaptive tick axis)
 #' @noRd
 render_timeline_bar <- function(tl, left_i, right_i, left_pin = FALSE, right_pin = FALSE,
-                                src_classes = NULL, ns = identity, labeller = NULL) {
+                                src_classes = NULL, ns = identity, labeller = NULL,
+                                from = NULL, to = NULL) {
   n <- nrow(tl)
   if (n == 0) return(NULL)
-  from <- min(tl$time); to <- max(tl$time)
+  from <- from %||% min(tl$time)
+  to   <- to   %||% max(tl$time)
   pos <- time_positions(tl$time, from, to)
 
   dots <- lapply(seq_len(n), function(i) {

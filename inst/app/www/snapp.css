@@ -1,7 +1,7 @@
 .carousel-bar { display: flex; align-items: center; gap: .5rem; }
 .carousel-crumb { flex: 1; font-size: .85rem; opacity: .8; }
 .carousel-empty { padding: 2rem; text-align: center; opacity: .7; }
-.carousel-timeline { padding: .75rem .5rem 0; }
+.carousel-timeline { padding: .75rem 2rem 0; }
 .tl-track { position: relative; height: 40px; margin: 10px 8px 4px; border-top: 2px solid rgba(127,127,127,.35); }
 .tl-dot { position: absolute; top: -7px; transform: translateX(-50%); width: 12px; height: 12px; border-radius: 50%; background: #888; display: inline-block; cursor: pointer; }
 .tl-tick { position: absolute; top: 0; }

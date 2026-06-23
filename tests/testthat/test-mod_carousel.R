@@ -120,7 +120,7 @@ test_that("render_timeline_bar positions dots by time and renders an adaptive ax
   expect_match(html, "is-left")             # left marker on dot 1
   expect_match(html, "is-right")            # right marker on dot 3
   # middle dot at ~50% (2026-01-06 is the midpoint of Jan 1..Jan 11)
-  expect_match(html, "left:50")
+  expect_match(html, 'data-idx="2"[^>]*left:50|left:50[^>]*data-idx="2"')
 })
 
 test_that("render_timeline_bar handles a single version (zero span) without error", {
@@ -150,4 +150,59 @@ test_that("stale index beyond a newly-shorter timeline does not crash the body",
       expect_error(output$body, NA)       # rendering the body must NOT error
     }
   )
+})
+
+test_that("view_range windows the carousel to the visible versions and resets to newest visible", {
+  tl <- tibble::tibble(
+    source = rep("git", 5), id = letters[1:5], label = letters[1:5],
+    time = as.POSIXct(c("2026-01-01","2026-01-02","2026-01-03","2026-06-01","2026-06-02"),
+                      tz = "UTC"))
+  shiny::testServer(mod_carousel_server, args = carousel_args(tl), {
+    session$flushReact()
+    expect_equal(nrow(visible_tl()), 5)        # default: full span
+    expect_equal(right_idx(), 5)
+    view_range(c(as.POSIXct("2026-01-01", tz="UTC"), as.POSIXct("2026-01-31 23:59:59", tz="UTC")))
+    session$flushReact()
+    expect_equal(nrow(visible_tl()), 3)        # only January versions visible
+    expect_equal(right_idx(), 3)               # reset to newest visible
+    expect_equal(left_idx(), 2)
+  })
+})
+
+test_that("input$brush sets the window; a new file clears it back to full", {
+  tl_rv <- shiny::reactiveVal(tibble::tibble(
+    source = rep("git", 4), id = letters[1:4], label = letters[1:4],
+    time = as.POSIXct(c("2026-01-01","2026-01-02","2026-06-01","2026-06-02"), tz = "UTC")))
+  shiny::testServer(
+    mod_carousel_server,
+    args = list(timeline = tl_rv, selected_path = shiny::reactive("/p/a.R"),
+                active_sources = shiny::reactive(list())),
+    {
+      session$flushReact()
+      session$setInputs(brush = c(as.Date("2026-01-01"), as.Date("2026-01-31")))
+      session$flushReact()
+      expect_false(is.null(view_range()))
+      expect_equal(nrow(visible_tl()), 2)      # Jan only
+      # new file -> window cleared
+      tl_rv(tibble::tibble(source = rep("git", 3), id = c("x","y","z"), label = c("x","y","z"),
+                           time = as.POSIXct(c("2025-03-01","2025-03-02","2025-03-03"), tz="UTC")))
+      session$flushReact()
+      expect_null(view_range())
+      expect_equal(nrow(visible_tl()), 3)
+    }
+  )
+})
+
+test_that("stepping stays within the visible window", {
+  tl <- tibble::tibble(
+    source = rep("git", 5), id = letters[1:5], label = letters[1:5],
+    time = as.POSIXct(c("2026-01-01","2026-01-02","2026-01-03","2026-06-01","2026-06-02"), tz="UTC"))
+  shiny::testServer(mod_carousel_server, args = carousel_args(tl), {
+    session$flushReact()
+    view_range(c(as.POSIXct("2026-01-01", tz="UTC"), as.POSIXct("2026-01-31 23:59:59", tz="UTC")))
+    session$flushReact()
+    expect_equal(right_idx(), 3)
+    session$setInputs(nxt = 1); expect_equal(right_idx(), 3)   # clamp at top of window (3 visible)
+    session$setInputs(prev = 1); expect_equal(right_idx(), 2)
+  })
 })
