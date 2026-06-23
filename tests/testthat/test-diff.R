@@ -22,3 +22,9 @@ test_that("render_text_diff embeds banner labels when provided", {
   expect_match(html, "OLDLABEL")
   expect_match(html, "NEWLABEL")
 })
+
+test_that("content_hash is deterministic, short, and content-sensitive", {
+  expect_equal(content_hash(charToRaw("abc")), content_hash(charToRaw("abc")))
+  expect_false(content_hash(charToRaw("abc")) == content_hash(charToRaw("abd")))
+  expect_equal(nchar(content_hash(charToRaw("abc"))), 12L)
+})

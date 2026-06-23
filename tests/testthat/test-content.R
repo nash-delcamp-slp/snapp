@@ -22,3 +22,10 @@ test_that("fetch_content errors when the source name is not among sources", {
   expect_error(fetch_content("/p/a.R", list(source = "missing", id = "1"), list(s)),
                "No active source")
 })
+
+test_that("fetch_content attaches a content hash", {
+  s <- fake_history("/p/a.R", list(list(id = "1", label = "x", time = 1, content = c("l1","l2"))), name = "git")
+  c1 <- fetch_content("/p/a.R", list(source = "git", id = "1"), list(s))
+  expect_equal(c1$hash, content_hash(c1$bytes))
+  expect_equal(nchar(c1$hash), 12L)
+})

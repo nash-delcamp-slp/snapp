@@ -34,3 +34,7 @@
 .nav-search { display: flex; align-items: center; gap: .5rem; }
 .nav-search .form-group { margin-bottom: 0; flex: 1; }
 .nav-search .checkbox { margin: 0; white-space: nowrap; font-size: .85rem; }
+.hash-badge { display: inline-block; font-size: .78rem; font-family: ui-monospace, SFMono-Regular, monospace;
+              padding: .15rem .5rem; border-radius: 4px; margin-bottom: .5rem; }
+.hash-badge.identical { background: var(--bs-success-bg-subtle, #d1e7dd); color: var(--bs-success-text-emphasis, #0a3622); }
+.hash-badge.differs   { background: var(--bs-warning-bg-subtle, #fff3cd); color: var(--bs-warning-text-emphasis, #664d03); }

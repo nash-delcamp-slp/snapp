@@ -86,6 +86,27 @@ test_that("single-frame timeline: stepping is a no-op (no self-diff)", {
   })
 })
 
+test_that("render_compare shows per-side hashes and a differs/identical badge", {
+  left  <- list(type = "image", bytes = as.raw(c(1,2,3)), lines = NULL, hash = "AAAAAAAAAAAA")
+  right <- list(type = "image", bytes = as.raw(c(4,5,6)), lines = NULL, hash = "BBBBBBBBBBBB")
+  html <- as.character(render_compare(left, right, "/x.png", "side-by-side", "L", "R", FALSE, FALSE))
+  expect_match(html, "AAAAAAAAAAAA")
+  expect_match(html, "BBBBBBBBBBBB")
+  expect_match(html, "content differs")
+
+  same <- list(type = "image", bytes = as.raw(c(9,9,9)), lines = NULL, hash = "CCCCCCCCCCCC")
+  html2 <- as.character(render_compare(same, same, "/x.png", "side-by-side", "L", "R", FALSE, FALSE))
+  expect_match(html2, "identical content")
+  expect_match(html2, "CCCCCCCCCCCC")
+
+  # text path: hashes appear in the diff column banners
+  tl <- list(type = "text", bytes = charToRaw("a\nb"), lines = c("a","b"), hash = "DDDDDDDDDDDD")
+  tr <- list(type = "text", bytes = charToRaw("a\nc"), lines = c("a","c"), hash = "EEEEEEEEEEEE")
+  html3 <- as.character(render_compare(tl, tr, "/f.txt", "side-by-side", "L", "R", FALSE, FALSE))
+  expect_match(html3, "DDDDDDDDDDDD")
+  expect_match(html3, "EEEEEEEEEEEE")
+})
+
 test_that("stale index beyond a newly-shorter timeline does not crash the body", {
   src <- FakeSource$new(name = "fake", root = "/p",
     data = list("/p/a.R" = list(

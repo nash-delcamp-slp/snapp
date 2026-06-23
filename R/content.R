@@ -12,5 +12,5 @@ fetch_content <- function(path, entry, sources) {
   lines <- if (identical(type, "text")) {
     strsplit(rawToChar(bytes), "\n", fixed = TRUE)[[1]]
   } else NULL
-  list(type = type, bytes = bytes, lines = lines)
+  list(type = type, bytes = bytes, lines = lines, hash = content_hash(bytes))
 }

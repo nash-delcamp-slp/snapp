@@ -28,10 +28,13 @@ image_data_uri <- function(bytes, path) {
   sprintf("data:%s;base64,%s", mime, base64enc::base64encode(bytes))
 }
 
+#' Short content hash of raw bytes
+#' @noRd
+content_hash <- function(bytes) substr(rlang::hash(bytes), 1, 12)
+
 #' One-line summary for opaque binary content
 #' @param bytes raw vector.
 #' @export
 binary_summary <- function(bytes) {
-  hash <- substr(rlang::hash(bytes), 1, 12)
-  sprintf("Binary content \u2014 %d bytes, hash %s", length(bytes), hash)
+  sprintf("Binary content \u2014 %d bytes, hash %s", length(bytes), content_hash(bytes))
 }

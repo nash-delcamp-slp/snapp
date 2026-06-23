@@ -146,29 +146,45 @@ mod_carousel_server <- function(id, timeline, selected_path, active_sources,
 render_compare <- function(left, right, path, view,
                            left_label = NULL, right_label = NULL,
                            left_pinned = FALSE, right_pinned = FALSE) {
-  pin_lbl <- function(lbl, pinned) if (isTRUE(pinned)) paste0("\U0001F4CC ", lbl %||% "") else (lbl %||% "")
-  if (is.null(right)) return(shiny::div(class = "carousel-empty", "Nothing to show."))
-  type <- right$type
-  if (identical(type, "text")) {
-    left_lines <- if (is.null(left)) character() else left$lines   # empty-left = "no earlier version"
-    html <- render_text_diff(left_lines, right$lines, mode = view,
-                             a_label = pin_lbl(left_label %||% "(no earlier version)", left_pinned),
-                             b_label = pin_lbl(right_label, right_pinned))
-    return(shiny::HTML(html))
+  pin_lbl    <- function(lbl, pinned) if (isTRUE(pinned)) paste0("\U0001F4CC ", lbl %||% "") else (lbl %||% "")
+  side_label <- function(lbl, content, pinned) {
+    base <- pin_lbl(lbl, pinned)
+    if (!is.null(content)) paste0(base, "  #", content$hash) else base
   }
-  if (identical(type, "image")) {
+  if (is.null(right)) return(shiny::div(class = "carousel-empty", "Nothing to show."))
+
+  badge <- if (!is.null(left)) {
+    if (identical(left$hash, right$hash)) {
+      shiny::div(class = "hash-badge identical",
+                 sprintf("\u2713 identical content  #%s", right$hash))
+    } else {
+      shiny::div(class = "hash-badge differs", "content differs")
+    }
+  } else NULL
+
+  type <- right$type
+  body <- if (identical(type, "text")) {
+    left_lines <- if (is.null(left)) character() else left$lines
+    html <- render_text_diff(left_lines, right$lines, mode = view,
+                             a_label = side_label(left_label %||% "(no earlier version)", left, left_pinned),
+                             b_label = side_label(right_label, right, right_pinned))
+    shiny::HTML(html)
+  } else if (identical(type, "image")) {
     img_pane <- function(content, lbl, pinned) shiny::div(class = "img-pane",
-      shiny::div(class = "pane-label", pin_lbl(lbl, pinned)),
+      shiny::div(class = "pane-label", side_label(lbl, content, pinned)),
       if (!is.null(content)) shiny::img(src = image_data_uri(content$bytes, path), width = "100%")
       else shiny::div(class = "carousel-empty", "(no earlier version)"))
-    return(shiny::div(class = "img-compare",
-      img_pane(left, left_label, left_pinned), img_pane(right, right_label, right_pinned)))
+    shiny::div(class = "img-compare",
+      img_pane(left, left_label, left_pinned), img_pane(right, right_label, right_pinned))
+  } else {
+    bin_pane <- function(content, lbl, pinned) shiny::div(class = "binary-pane",
+      shiny::div(class = "pane-label", side_label(lbl, content, pinned)),
+      shiny::tags$p(if (!is.null(content)) binary_summary(content$bytes) else "(no earlier version)"))
+    shiny::div(class = "binary-compare",
+      bin_pane(left, left_label, left_pinned), bin_pane(right, right_label, right_pinned))
   }
-  bin_pane <- function(content, lbl, pinned) shiny::div(class = "binary-pane",
-    shiny::div(class = "pane-label", pin_lbl(lbl, pinned)),
-    shiny::tags$p(if (!is.null(content)) binary_summary(content$bytes) else "(no earlier version)"))
-  shiny::div(class = "binary-compare",
-    bin_pane(left, left_label, left_pinned), bin_pane(right, right_label, right_pinned))
+
+  shiny::tagList(badge, body)
 }
 
 #' Render the clickable timeline scrubber (left/right markers, pinned, source color)
