@@ -7,14 +7,14 @@
 
 ## Installation
 
-Install from source using `pak` or `remotes`:
+Install from GitHub with `pak` or `remotes`:
 
 ```r
 # With pak:
-pak::pak("path/to/snapp")
+pak::pak("nash-delcamp-slp/snapp")
 
 # With remotes:
-remotes::install_local("path/to/snapp")
+remotes::install_github("nash-delcamp-slp/snapp")
 ```
 
 ## Usage
