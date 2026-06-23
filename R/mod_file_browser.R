@@ -1,62 +1,143 @@
-#' File browser UI (tree + search)
-#' @param id Module id.
+#' File navigator UI (breadcrumb + one-level list + search)
 #' @noRd
 mod_file_browser_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList(
-    shiny::textInput(ns("search"), NULL, placeholder = "Search files\u2026"),
-    shinyTree::shinyTree(ns("tree"))
+    shiny::textInput(ns("search"), NULL, placeholder = "Search files…"),
+    shiny::uiOutput(ns("breadcrumb")),
+    shiny::uiOutput(ns("listing"))
   )
 }
 
-#' File browser server
+#' File navigator server
 #' @param id Module id.
-#' @param active_sources reactive returning list of enabled sources.
+#' @param active_sources reactive list of enabled SnapshotSource instances.
 #' @return reactive selected absolute file path (or NULL).
 #' @noRd
 mod_file_browser_server <- function(id, active_sources) {
   shiny::moduleServer(id, function(input, output, session) {
-    files <- shiny::reactive({
-      # TODO(R2): replaced by navigator — will use merge_children/find_files for lazy traversal
-      character()
+    ns <- session$ns
+    current_dir   <- shiny::reactiveVal(NULL)   # dir being browsed; NULL = multi-root "sources" view
+    selected_file <- shiny::reactiveVal(NULL)
+
+    roots <- shiny::reactive({
+      srcs <- active_sources()
+      if (length(srcs) == 0) return(character(0))
+      unique(vapply(srcs, function(s) as.character(s$root()), character(1)))
     })
 
-    output$tree <- shinyTree::renderTree({
-      paths <- files()
-      if (length(paths) == 0) return(list("(no files)" = ""))
-      paths_to_tree(paths)
+    # Initialize / repair current_dir when the source set changes.
+    shiny::observeEvent(active_sources(), {
+      rs <- roots(); cd <- current_dir()
+      if (length(rs) == 0) { current_dir(NULL); return() }
+      under <- !is.null(cd) && any(vapply(rs, function(r) is_ancestor_or_equal(r, cd), logical(1)))
+      if (!under) current_dir(if (length(rs) == 1) rs[[1]] else NULL)
+    }, ignoreNULL = FALSE)
+
+    searching <- shiny::reactive(!is.null(input$search) && nzchar(input$search))
+
+    entries <- shiny::reactive({
+      srcs <- active_sources(); cd <- current_dir()
+      empty <- tibble::tibble(name = character(), path = character(), type = character())
+      if (length(srcs) == 0) return(empty)
+      if (is.null(cd)) {                       # multi-root view: list roots as dirs
+        rs <- roots()
+        return(tibble::tibble(name = rs, path = rs, type = rep("dir", length(rs))))
+      }
+      merge_children(srcs, cd)
     })
 
-    shiny::reactive({
-      sel <- shinyTree::get_selected(input$tree, format = "names")
-      if (length(sel) == 0) return(NULL)
-      anc  <- attr(sel[[1]], "ancestry")   # ancestor node names from root, e.g. c("p","sub")
-      leaf <- sel[[1]]                     # leaf node name, e.g. "b.R"
-      paste0("/", paste(c(anc, leaf), collapse = "/"))
+    search_results <- shiny::reactive({
+      empty <- tibble::tibble(name = character(), path = character(), type = character())
+      if (!searching()) return(NULL)
+      cd <- current_dir()
+      bases <- if (is.null(cd)) roots() else cd
+      if (length(bases) == 0) return(empty)
+      parts <- lapply(bases, function(b) find_files(active_sources(), b, input$search))
+      res <- do.call(rbind, c(list(empty), parts))
+      res <- res[!duplicated(res$path), , drop = FALSE]
+      tibble::as_tibble(utils::head(res, 300L))
     })
+
+    output$breadcrumb <- shiny::renderUI({
+      if (length(active_sources()) == 0 || searching()) return(NULL)
+      cd <- current_dir(); rs <- roots()
+      crumb_link <- function(path, label) {
+        shiny::tags$a(href = "#", class = "nav-seg", `data-path` = path,
+          onclick = sprintf("Shiny.setInputValue('%s', this.getAttribute('data-path'), {priority:'event'});", ns("crumb")),
+          label)
+      }
+      items <- list()
+      if (length(rs) > 1) items <- c(items, list(crumb_link("", "(sources)")))
+      if (!is.null(cd)) {
+        root <- rs[vapply(rs, function(r) is_ancestor_or_equal(r, cd), logical(1))]
+        root <- if (length(root)) root[[1]] else cd
+        segs <- character(0); cur <- as.character(cd)
+        repeat {
+          segs <- c(cur, segs)
+          if (identical(cur, as.character(root))) break
+          parent <- as.character(fs::path_dir(cur))
+          if (identical(parent, cur)) break
+          cur <- parent
+        }
+        for (p in segs) {
+          lbl <- fs::path_file(p); if (!nzchar(lbl)) lbl <- p
+          items <- c(items, list(crumb_link(p, lbl)))
+        }
+      }
+      if (length(items) == 0) return(NULL)
+      # interleave separators BETWEEN items only
+      out <- list(items[[1]])
+      for (i in seq_along(items)[-1]) out <- c(out, list(shiny::tags$span(class = "nav-sep", " / "), items[[i]]))
+      shiny::div(class = "nav-crumb", do.call(shiny::tagList, out))
+    })
+
+    output$listing <- shiny::renderUI({
+      if (length(active_sources()) == 0) {
+        return(shiny::div(class = "nav-empty", "Enable a source in the Sources panel to browse files."))
+      }
+      df <- if (searching()) search_results() else entries()
+      if (is.null(df) || nrow(df) == 0) {
+        return(shiny::div(class = "nav-empty", if (searching()) "No matches." else "Empty directory."))
+      }
+      cap <- 500L
+      total <- nrow(df)
+      df_shown <- utils::head(df, cap)
+      rows <- lapply(seq_len(nrow(df_shown)), function(i) {
+        is_dir <- df_shown$type[i] == "dir"
+        glyph  <- if (is_dir) "\U0001F4C2" else "\U0001F4C4"
+        label  <- if (searching()) df_shown$path[i] else df_shown$name[i]
+        shiny::tags$a(href = "#",
+          class = paste("nav-entry", if (is_dir) "is-dir" else "is-file"),
+          `data-path` = df_shown$path[i],
+          onclick = sprintf("Shiny.setInputValue('%s', this.getAttribute('data-path'), {priority:'event'});", ns("clicked")),
+          shiny::span(class = "nav-icon", glyph), shiny::span(label))
+      })
+      ui <- shiny::div(class = "nav-list", do.call(shiny::tagList, rows))
+      if (total > cap) {
+        ui <- shiny::tagList(ui, shiny::div(class = "nav-empty",
+          sprintf("…and %d more — use search to narrow.", total - cap)))
+      }
+      ui
+    })
+
+    shiny::observeEvent(input$clicked, {
+      p  <- input$clicked
+      df <- if (searching()) search_results() else entries()
+      row <- df[df$path == p, , drop = FALSE]
+      typ <- if (nrow(row)) row$type[[1]] else "file"
+      if (identical(typ, "dir")) {
+        current_dir(p)
+        shiny::updateTextInput(session, "search", value = "")
+      } else {
+        selected_file(p)
+      }
+    })
+
+    shiny::observeEvent(input$crumb, {
+      current_dir(if (identical(input$crumb, "")) NULL else input$crumb)
+    })
+
+    shiny::reactive(selected_file())
   })
-}
-
-#' Convert a flat vector of absolute paths into a nested list for shinyTree,
-#' where each leaf's value is its absolute path.
-#' @noRd
-paths_to_tree <- function(paths) {
-  root <- list()
-  for (p in paths) {
-    parts <- strsplit(sub("^/", "", p), "/", fixed = TRUE)[[1]]
-    root <- assign_nested(root, parts, p)
-  }
-  root
-}
-
-#' @noRd
-assign_nested <- function(node, parts, fullpath) {
-  if (length(parts) == 1) {
-    node[[parts[[1]]]] <- structure("", sttype = "file")
-    return(node)
-  }
-  child <- node[[parts[[1]]]]
-  if (!is.list(child)) child <- list()
-  node[[parts[[1]]]] <- assign_nested(child, parts[-1], fullpath)
-  node
 }
