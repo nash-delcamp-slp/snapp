@@ -5,9 +5,9 @@
 .tl-track { position: relative; display: flex; gap: 6px; align-items: center;
             border-top: 2px solid rgba(127,127,127,.35); padding-top: 10px; }
 .tl-dot { width: 12px; height: 12px; border-radius: 50%; background: #888; display: inline-block; cursor: pointer; }
-.tl-dot.is-left  { box-shadow: 0 0 0 2px var(--bs-body-bg, #fff), 0 0 0 4px #888; }
-.tl-dot.is-right { box-shadow: 0 0 0 2px var(--bs-body-bg, #fff), 0 0 0 4px #333; }
-.tl-dot.is-pinned { outline: 2px solid #f1c40f; outline-offset: 2px; }
+.tl-dot.is-left  { box-shadow: 0 0 0 2px var(--bs-body-bg, #fff), 0 0 0 4px var(--bs-danger, #d9534f); }
+.tl-dot.is-right { box-shadow: 0 0 0 2px var(--bs-body-bg, #fff), 0 0 0 4px var(--bs-success, #198754); }
+.tl-dot.is-pinned { outline: 2px solid var(--bs-warning, #ffc107); outline-offset: 2px; }
 .tl-dot.src-gitsource { background: #e36209; }
 .tl-dot.src-snapshotdirsource { background: #2188ff; }
 .tl-dot.src-unknown { background: #888; }

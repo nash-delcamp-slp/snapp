@@ -51,6 +51,8 @@ mod_carousel_server <- function(id, timeline, selected_path, active_sources,
       if (is.null(n) || n == 0) { right_idx(NULL); left_idx(NULL) }
       else { right_idx(n); left_idx(if (n > 1) n - 1 else NULL) }
       left_pin(FALSE); right_pin(FALSE); next_click("left")
+      shiny::updateActionButton(session, "pin_left",  label = "\U0001F4CC Pin left")
+      shiny::updateActionButton(session, "pin_right", label = "\U0001F4CC Pin right")
     }, ignoreNULL = FALSE)
 
     n_frames <- shiny::reactive(nrow(timeline()))
@@ -95,14 +97,14 @@ mod_carousel_server <- function(id, timeline, selected_path, active_sources,
     })
 
     pane_content <- function(i) {
-      if (is.null(i)) return(NULL)
       tl <- timeline()
+      if (is.null(i) || nrow(tl) == 0 || i < 1 || i > nrow(tl)) return(NULL)
       fetch_content(selected_path(), as.list(tl[i, ]), active_sources())
     }
 
     frame_label <- function(i) {
-      if (is.null(i)) return(NULL)
       tl <- timeline()
+      if (is.null(i) || nrow(tl) == 0 || i < 1 || i > nrow(tl)) return(NULL)
       base <- tl$label[i]
       tok  <- if (tl$source[i] %in% names(src_classes())) src_classes()[[tl$source[i]]] else ""
       prefix <- if (identical(tok, "src-gitsource")) paste0(substr(tl$id[i], 1, 8), " ") else ""

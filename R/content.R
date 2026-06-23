@@ -5,7 +5,7 @@
 #' @return list(type, bytes, lines).
 #' @export
 fetch_content <- function(path, entry, sources) {
-  src <- Find(function(s) s$name == entry$source, sources)
+  src <- Find(function(s) identical(s$name, entry$source), sources)
   if (is.null(src)) cli::cli_abort("No active source named {.val {entry$source}}.")
   bytes <- src$read_file(path, entry$id)
   type  <- src$classify(bytes, path)

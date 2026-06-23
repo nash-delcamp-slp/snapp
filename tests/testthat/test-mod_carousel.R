@@ -85,3 +85,24 @@ test_that("single-frame timeline: stepping is a no-op (no self-diff)", {
     expect_equal(right_idx(), 1)
   })
 })
+
+test_that("stale index beyond a newly-shorter timeline does not crash the body", {
+  src <- FakeSource$new(name = "fake", root = "/p",
+    data = list("/p/a.R" = list(
+      list(id = "s1", label = "x", time = 1, content = "v1"),
+      list(id = "s2", label = "y", time = 2, content = "v2"))))
+  tl <- tibble::tibble(source = c("fake","fake"), id = c("s1","s2"),
+                       label = c("x","y"),
+                       time = as.POSIXct(c(1,2), origin = "1970-01-01", tz = "UTC"))
+  shiny::testServer(
+    mod_carousel_server,
+    args = list(timeline = shiny::reactive(tl),
+                selected_path = shiny::reactive("/p/a.R"),
+                active_sources = shiny::reactive(list(src))),
+    {
+      session$flushReact()
+      right_idx(99L)                      # stale index beyond nrow(tl) == 2
+      expect_error(output$body, NA)       # rendering the body must NOT error
+    }
+  )
+})
