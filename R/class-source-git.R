@@ -78,24 +78,27 @@ GitSource <- R6::R6Class(
       git_read_raw(self$repo, paste0(id, ":", rel))
     },
 
-    #' @description List directory entries at a snapshot.
-    #' @param path Absolute file or directory path within the repository, or NULL for the repo root.
-    #' @param id Optional commit SHA; defaults to HEAD.
-    #' @return tibble(path, type).
-    list_tree = function(path, id = NULL) {
-      ref  <- id %||% "HEAD"
+    #' @description Root directory for navigation.
+    root = function() as.character(self$repo),
+
+    #' @description List immediate children of a directory (one level).
+    #' @param path Absolute directory path, or NULL for the source root.
+    #' @return tibble(name, path, type) where type is "dir" or "file".
+    list_children = function(path = NULL) {
       path <- path %||% self$repo
       rel  <- if (fs::is_dir(path)) fs::path_rel(path, self$repo)
               else fs::path_rel(fs::path_dir(path), self$repo)
-      args <- c("ls-tree", "-r", "--name-only", ref)
-      if (!identical(as.character(rel), ".")) args <- c(args, as.character(rel))
-      out <- tryCatch(git_run(self$repo, args), error = function(e) character())
-      out <- out[nzchar(out)]
-      if (length(out) == 0) return(tibble::tibble(path = character(), type = character()))
-      tibble::tibble(
-        path = as.character(fs::path(self$repo, out)),
-        type = "file"
-      )
+      arg  <- if (identical(as.character(rel), ".")) "HEAD" else paste0("HEAD:", as.character(rel))
+      out  <- tryCatch(git_run(self$repo, c("ls-tree", arg)), error = function(e) character())
+      out  <- out[nzchar(out)]
+      empty <- tibble::tibble(name = character(), path = character(), type = character())
+      if (length(out) == 0) return(empty)
+      tabs <- strsplit(out, "\t", fixed = TRUE)          # "<mode> <type> <sha>\t<name>"
+      nm   <- vapply(tabs, function(x) x[[2]], character(1))
+      meta <- vapply(tabs, function(x) x[[1]], character(1))
+      type <- ifelse(grepl(" tree ", meta, fixed = TRUE), "dir", "file")
+      base <- if (identical(as.character(rel), ".")) self$repo else fs::path(self$repo, rel)
+      tibble::tibble(name = nm, path = as.character(fs::path(base, nm)), type = type)
     }
   )
 )

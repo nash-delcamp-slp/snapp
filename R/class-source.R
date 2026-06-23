@@ -1,6 +1,6 @@
 #' Abstract snapshot source
 #'
-#' Subclass and implement `list_snapshots()`, `read_file()`, `list_tree()`.
+#' Subclass and implement `list_snapshots()`, `read_file()`, `root()`, `list_children()`.
 #' @importFrom R6 R6Class
 #' @export
 SnapshotSource <- R6::R6Class(
@@ -26,11 +26,13 @@ SnapshotSource <- R6::R6Class(
     #' @return raw vector.
     read_file = function(path, id) cli::cli_abort("abstract: implement read_file()"),
 
-    #' @description List directory entries at a snapshot.
-    #' @param path Absolute directory path.
-    #' @param id Optional snapshot id.
-    #' @return tibble(path, type).
-    list_tree = function(path, id = NULL) cli::cli_abort("abstract: implement list_tree()"),
+    #' @description Root directory for navigation.
+    root = function() cli::cli_abort("abstract: implement root()"),
+
+    #' @description List immediate children of a directory (one level).
+    #' @param path Absolute directory path, or NULL for the source root.
+    #' @return tibble(name, path, type) where type is "dir" or "file".
+    list_children = function(path = NULL) cli::cli_abort("abstract: implement list_children()"),
 
     #' @description Classify bytes as "text", "image", or "binary".
     #' @param bytes raw vector.

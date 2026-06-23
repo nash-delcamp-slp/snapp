@@ -90,27 +90,16 @@ SnapshotDirSource <- R6::R6Class(
       readBin(target, "raw", n = file.info(target)$size %||% 0)
     },
 
-    #' @description List directory entries across snapshots.
-    #' @param path Absolute file or directory path within the dataset root, or NULL for the dataset root.
-    #' @param id Optional snapshot directory path to restrict to; NULL scans all snapshots.
-    #' @return tibble(path, type) with deduplicated live dataset paths.
-    list_tree = function(path, id = NULL) {
+    #' @description Root directory for navigation.
+    root = function() as.character(self$dataset_root),
+
+    #' @description List immediate children of a directory (one level).
+    #' @param path Absolute directory path, or NULL for the source root.
+    #' @return tibble(name, path, type) where type is "dir" or "file".
+    list_children = function(path = NULL) {
       path <- path %||% self$dataset_root
-      rel_dir <- if (fs::is_dir(path)) fs::path_rel(path, self$dataset_root)
-                 else fs::path_rel(fs::path_dir(path), self$dataset_root)
-      dirs <- if (is.null(id)) self$snapshot_dirs() else id
-      rows <- lapply(dirs, function(d) {
-        base <- if (identical(as.character(rel_dir), ".")) d else fs::path(d, rel_dir)
-        if (!fs::dir_exists(base)) return(NULL)
-        entries <- fs::dir_ls(base, recurse = TRUE, type = "file")
-        if (length(entries) == 0) return(NULL)
-        tibble::tibble(
-          path = as.character(fs::path(self$dataset_root, fs::path_rel(entries, d))),
-          type = "file"
-        )
-      })
-      out <- do.call(rbind, c(list(tibble::tibble(path = character(), type = character())), rows))
-      out[!duplicated(out$path), , drop = FALSE]
+      dir  <- if (fs::is_dir(path)) path else fs::path_dir(path)
+      safe_list_children(dir)
     }
   )
 )

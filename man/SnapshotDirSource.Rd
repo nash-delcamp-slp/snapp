@@ -35,7 +35,8 @@ snapshot timestamps from directory names; NULL to use mtime.}
 \item \href{#method-SnapshotDirSource-snapshot_time}{\code{SnapshotDirSource$snapshot_time()}}
 \item \href{#method-SnapshotDirSource-list_snapshots}{\code{SnapshotDirSource$list_snapshots()}}
 \item \href{#method-SnapshotDirSource-read_file}{\code{SnapshotDirSource$read_file()}}
-\item \href{#method-SnapshotDirSource-list_tree}{\code{SnapshotDirSource$list_tree()}}
+\item \href{#method-SnapshotDirSource-root}{\code{SnapshotDirSource$root()}}
+\item \href{#method-SnapshotDirSource-list_children}{\code{SnapshotDirSource$list_children()}}
 \item \href{#method-SnapshotDirSource-clone}{\code{SnapshotDirSource$clone()}}
 }
 }
@@ -150,25 +151,33 @@ raw vector of file bytes.
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SnapshotDirSource-list_tree"></a>}}
-\if{latex}{\out{\hypertarget{method-SnapshotDirSource-list_tree}{}}}
-\subsection{Method \code{list_tree()}}{
-List directory entries across snapshots.
+\if{html}{\out{<a id="method-SnapshotDirSource-root"></a>}}
+\if{latex}{\out{\hypertarget{method-SnapshotDirSource-root}{}}}
+\subsection{Method \code{root()}}{
+Root directory for navigation.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SnapshotDirSource$list_tree(path, id = NULL)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{SnapshotDirSource$root()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-SnapshotDirSource-list_children"></a>}}
+\if{latex}{\out{\hypertarget{method-SnapshotDirSource-list_children}{}}}
+\subsection{Method \code{list_children()}}{
+List immediate children of a directory (one level).
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{SnapshotDirSource$list_children(path = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{path}}{Absolute file or directory path within the dataset root, or NULL for the dataset root.}
-
-\item{\code{id}}{Optional snapshot directory path to restrict to; NULL scans all snapshots.}
+\item{\code{path}}{Absolute directory path, or NULL for the source root.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-tibble(path, type) with deduplicated live dataset paths.
+tibble(name, path, type) where type is "dir" or "file".
 }
 }
 \if{html}{\out{<hr>}}

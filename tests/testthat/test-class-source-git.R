@@ -17,19 +17,15 @@ test_that("GitSource lists snapshots newest-info and reads blobs", {
   expect_false(grepl("iter", txt))
 })
 
-test_that("GitSource list_tree returns files under the repo", {
+test_that("GitSource root + list_children list one level with types", {
   repo <- make_fixture_repo()
   src <- GitSource$new(repo = repo, name = "git")
-  tr <- src$list_tree(file.path(repo, "R"))
-  expect_true(any(basename(tr$path) == "model.R"))
-})
-
-test_that("GitSource list_tree(NULL) lists all tracked files recursively", {
-  repo <- make_fixture_repo()
-  src <- GitSource$new(repo = repo, name = "git")
-  tr <- src$list_tree(NULL)          # how the file browser calls it (repo root)
-  expect_true(any(basename(tr$path) == "model.R"))
-  expect_true(all(tr$type == "file"))
-  # the file lives under R/, so a recursive listing must include the nested path
-  expect_true(any(grepl("R/model.R$", tr$path)))
+  expect_equal(normalizePath(src$root()), normalizePath(repo))
+  top <- src$list_children(NULL)           # repo root
+  expect_true("R" %in% top$name)
+  expect_equal(top$type[top$name == "R"], "dir")
+  kids <- src$list_children(file.path(repo, "R"))
+  expect_true("model.R" %in% kids$name)
+  expect_equal(kids$type[kids$name == "model.R"], "file")
+  expect_true(any(grepl("R/model.R$", kids$path)))   # absolute live path
 })

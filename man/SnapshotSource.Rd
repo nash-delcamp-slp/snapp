@@ -9,7 +9,7 @@ Abstract snapshot source
 Abstract snapshot source
 }
 \details{
-Subclass and implement `list_snapshots()`, `read_file()`, `list_tree()`.
+Subclass and implement `list_snapshots()`, `read_file()`, `root()`, `list_children()`.
 }
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
@@ -24,7 +24,8 @@ Subclass and implement `list_snapshots()`, `read_file()`, `list_tree()`.
 \item \href{#method-SnapshotSource-new}{\code{SnapshotSource$new()}}
 \item \href{#method-SnapshotSource-list_snapshots}{\code{SnapshotSource$list_snapshots()}}
 \item \href{#method-SnapshotSource-read_file}{\code{SnapshotSource$read_file()}}
-\item \href{#method-SnapshotSource-list_tree}{\code{SnapshotSource$list_tree()}}
+\item \href{#method-SnapshotSource-root}{\code{SnapshotSource$root()}}
+\item \href{#method-SnapshotSource-list_children}{\code{SnapshotSource$list_children()}}
 \item \href{#method-SnapshotSource-classify}{\code{SnapshotSource$classify()}}
 \item \href{#method-SnapshotSource-clone}{\code{SnapshotSource$clone()}}
 }
@@ -89,25 +90,33 @@ raw vector.
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-SnapshotSource-list_tree"></a>}}
-\if{latex}{\out{\hypertarget{method-SnapshotSource-list_tree}{}}}
-\subsection{Method \code{list_tree()}}{
-List directory entries at a snapshot.
+\if{html}{\out{<a id="method-SnapshotSource-root"></a>}}
+\if{latex}{\out{\hypertarget{method-SnapshotSource-root}{}}}
+\subsection{Method \code{root()}}{
+Root directory for navigation.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SnapshotSource$list_tree(path, id = NULL)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{SnapshotSource$root()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-SnapshotSource-list_children"></a>}}
+\if{latex}{\out{\hypertarget{method-SnapshotSource-list_children}{}}}
+\subsection{Method \code{list_children()}}{
+List immediate children of a directory (one level).
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{SnapshotSource$list_children(path = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{path}}{Absolute directory path.}
-
-\item{\code{id}}{Optional snapshot id.}
+\item{\code{path}}{Absolute directory path, or NULL for the source root.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-tibble(path, type).
+tibble(name, path, type) where type is "dir" or "file".
 }
 }
 \if{html}{\out{<hr>}}

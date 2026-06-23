@@ -3,7 +3,12 @@ test_that("SnapshotSource abstract methods stop()", {
   expect_equal(s$name, "x")
   expect_error(s$list_snapshots("/f"), "abstract")
   expect_error(s$read_file("/f", "1"), "abstract")
-  expect_error(s$list_tree("/d"), "abstract")
+})
+
+test_that("SnapshotSource root/list_children are abstract", {
+  s <- SnapshotSource$new(name = "x")
+  expect_error(s$root(), "abstract")
+  expect_error(s$list_children(), "abstract")
 })
 
 test_that("classify distinguishes text, image, binary", {

@@ -24,7 +24,8 @@ Git snapshot source
 \item \href{#method-GitSource-new}{\code{GitSource$new()}}
 \item \href{#method-GitSource-list_snapshots}{\code{GitSource$list_snapshots()}}
 \item \href{#method-GitSource-read_file}{\code{GitSource$read_file()}}
-\item \href{#method-GitSource-list_tree}{\code{GitSource$list_tree()}}
+\item \href{#method-GitSource-root}{\code{GitSource$root()}}
+\item \href{#method-GitSource-list_children}{\code{GitSource$list_children()}}
 \item \href{#method-GitSource-clone}{\code{GitSource$clone()}}
 }
 }
@@ -97,25 +98,33 @@ raw vector of file bytes.
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-GitSource-list_tree"></a>}}
-\if{latex}{\out{\hypertarget{method-GitSource-list_tree}{}}}
-\subsection{Method \code{list_tree()}}{
-List directory entries at a snapshot.
+\if{html}{\out{<a id="method-GitSource-root"></a>}}
+\if{latex}{\out{\hypertarget{method-GitSource-root}{}}}
+\subsection{Method \code{root()}}{
+Root directory for navigation.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{GitSource$list_tree(path, id = NULL)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{GitSource$root()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-GitSource-list_children"></a>}}
+\if{latex}{\out{\hypertarget{method-GitSource-list_children}{}}}
+\subsection{Method \code{list_children()}}{
+List immediate children of a directory (one level).
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{GitSource$list_children(path = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{path}}{Absolute file or directory path within the repository, or NULL for the repo root.}
-
-\item{\code{id}}{Optional commit SHA; defaults to HEAD.}
+\item{\code{path}}{Absolute directory path, or NULL for the source root.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-tibble(path, type).
+tibble(name, path, type) where type is "dir" or "file".
 }
 }
 \if{html}{\out{<hr>}}

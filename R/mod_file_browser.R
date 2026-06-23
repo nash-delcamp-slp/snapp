@@ -17,13 +17,8 @@ mod_file_browser_ui <- function(id) {
 mod_file_browser_server <- function(id, active_sources) {
   shiny::moduleServer(id, function(input, output, session) {
     files <- shiny::reactive({
-      srcs <- active_sources()
-      if (length(srcs) == 0) return(character())
-      tr <- merge_tree(srcs)
-      paths <- tr$path[tr$type == "file"]
-      q <- input$search
-      if (!is.null(q) && nzchar(q)) paths <- paths[grepl(q, paths, fixed = TRUE)]
-      sort(paths)
+      # TODO(R2): replaced by navigator — will use merge_children/find_files for lazy traversal
+      character()
     })
 
     output$tree <- shinyTree::renderTree({
