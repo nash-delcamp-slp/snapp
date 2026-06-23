@@ -15,6 +15,7 @@ mod_carousel_ui <- function(id) {
                             choices = c("side-by-side", "unified"), selected = "side-by-side")
       )
     ),
+    shiny::div(class = "carousel-overview", shiny::uiOutput(ns("overview"))),
     shiny::div(class = "carousel-timeline", shiny::uiOutput(ns("timeline"))),
     shiny::uiOutput(ns("body"))
   )
@@ -65,7 +66,7 @@ mod_carousel_server <- function(id, timeline, selected_path, active_sources,
     # New file -> drop any brush window.
     shiny::observeEvent(timeline(), { view_range(NULL) }, ignoreNULL = FALSE)
 
-    # Frames changed (new file OR brush) -> reset comparison to newest visible, clear pins.
+    # Visible frames changed (new file, brush applied, or brush cleared) -> reset to newest visible, clear pins.
     shiny::observeEvent(visible_tl(), {
       n <- nrow(visible_tl())
       if (is.null(n) || n == 0) { right_idx(NULL); left_idx(NULL) }
@@ -75,7 +76,7 @@ mod_carousel_server <- function(id, timeline, selected_path, active_sources,
       shiny::updateActionButton(session, "pin_right", label = "\U0001F4CC Pin right")
     }, ignoreNULL = FALSE)
 
-    n_frames <- shiny::reactive(nrow(visible_tl()))
+    n_frames <- shiny::reactive({ tl <- visible_tl(); if (is.null(tl)) 0L else nrow(tl) })
     clamp <- function(x, n) max(1L, min(n, x))
 
     step <- function(delta) {
@@ -120,7 +121,13 @@ mod_carousel_server <- function(id, timeline, selected_path, active_sources,
       if (is.null(vr) || length(vr) != 2) return()
       from <- as.POSIXct(paste0(as.Date(vr[[1]]), " 00:00:00"), tz = "UTC")
       to   <- as.POSIXct(paste0(as.Date(vr[[2]]), " 23:59:59"), tz = "UTC")
-      view_range(c(from, to))
+      fr <- full_range()
+      # A brush that covers the whole span means "no window" -> keep view_range NULL.
+      if (!is.null(fr) && as.Date(from) <= as.Date(fr[[1]]) && as.Date(to) >= as.Date(fr[[2]])) {
+        view_range(NULL)
+      } else {
+        view_range(c(from, to))
+      }
     }, ignoreInit = TRUE)
 
     pane_content <- function(i) {
@@ -138,11 +145,29 @@ mod_carousel_server <- function(id, timeline, selected_path, active_sources,
       sprintf("%s%s (%s)", prefix, base, format(tl$time[i], "%Y-%m-%d %H:%M"))
     }
 
+    output$overview <- shiny::renderUI({
+      tl <- timeline(); fr <- full_range()
+      if (is.null(tl) || nrow(tl) < 2 || is.null(fr)) return(NULL)
+      d1 <- as.Date(fr[[1]]); d2 <- as.Date(fr[[2]])
+      if (d1 >= d2) return(NULL)                 # single-day span: detail track already shows it (no day-granular brush)
+      pos <- time_positions(tl$time, fr[[1]], fr[[2]])
+      sc  <- src_classes()
+      dots <- lapply(seq_len(nrow(tl)), function(i) {
+        token <- if (tl$source[i] %in% names(sc)) sc[[tl$source[i]]] else "src-unknown"
+        shiny::span(class = paste("ov-dot", token), style = sprintf("left:%.4f%%;", pos[i]))
+      })
+      shiny::tagList(
+        shiny::div(class = "ov-strip", do.call(shiny::tagList, dots)),
+        shiny::sliderInput(ns("brush"), NULL, min = d1, max = d2, value = c(d1, d2),
+                           width = "100%", timeFormat = "%b %d, %Y")
+      )
+    })
+
     output$crumb <- shiny::renderText({
       tl <- visible_tl(); full <- timeline()
       if (is.null(right_idx()) || nrow(tl) == 0) return("No history")
       n <- nrow(tl); m <- if (is.null(full)) n else nrow(full)
-      windowed <- !is.null(view_range()) && n < m
+      windowed <- n < m
       base <- sprintf("%s \u00B7 %d frame%s", basename(selected_path() %||% ""), n, if (n == 1) "" else "s")
       if (windowed) paste0(base, sprintf(" (of %d)", m)) else base
     })

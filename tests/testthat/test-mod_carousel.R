@@ -193,6 +193,61 @@ test_that("input$brush sets the window; a new file clears it back to full", {
   )
 })
 
+test_that("overview renders a brush slider for a multi-date history", {
+  tl <- tibble::tibble(
+    source = rep("git", 3), id = letters[1:3], label = letters[1:3],
+    time = as.POSIXct(c("2026-01-01", "2026-03-01", "2026-06-01"), tz = "UTC"))
+  shiny::testServer(mod_carousel_server, args = carousel_args(tl), {
+    session$flushReact()
+    ov <- paste(as.character(output$overview), collapse = "")
+    expect_match(ov, "ov-dot")                 # density strip dots
+    expect_match(ov, "brush")                  # the slider input id
+  })
+})
+
+test_that("overview is empty for a single-day history (no day-granular brush)", {
+  tl <- tibble::tibble(
+    source = rep("git", 3), id = letters[1:3], label = letters[1:3],
+    time = as.POSIXct(c("2026-05-31 09:15", "2026-05-31 13:15", "2026-05-31 18:15"), tz = "UTC"))
+  shiny::testServer(mod_carousel_server, args = carousel_args(tl), {
+    session$flushReact()
+    ov <- output$overview
+    expect_true(is.null(ov) || !grepl("brush", as.character(ov)))
+  })
+})
+
+test_that("brushing the overview windows the carousel (end-to-end via input$brush)", {
+  tl <- tibble::tibble(
+    source = rep("git", 4), id = letters[1:4], label = letters[1:4],
+    time = as.POSIXct(c("2026-01-01","2026-01-02","2026-06-01","2026-06-02"), tz = "UTC"))
+  shiny::testServer(mod_carousel_server, args = carousel_args(tl), {
+    session$flushReact()
+    session$setInputs(brush = c(as.Date("2026-01-01"), as.Date("2026-01-31")))
+    session$flushReact()
+    expect_equal(nrow(visible_tl()), 2)        # only January versions
+    expect_equal(right_idx(), 2)               # reset to newest visible
+  })
+})
+
+test_that("a full-span brush leaves view_range NULL (no spurious window)", {
+  tl <- tibble::tibble(
+    source = rep("git", 3), id = letters[1:3], label = letters[1:3],
+    time = as.POSIXct(c("2026-01-01", "2026-03-01", "2026-06-01"), tz = "UTC"))
+  shiny::testServer(mod_carousel_server, args = carousel_args(tl), {
+    session$flushReact()
+    # brush covering the whole span (the rebuilt-slider default)
+    session$setInputs(brush = c(as.Date("2026-01-01"), as.Date("2026-06-01")))
+    session$flushReact()
+    expect_null(view_range())                 # full coverage -> stays NULL
+    expect_equal(nrow(visible_tl()), 3)        # all versions visible
+    # a genuine sub-window still sets it
+    session$setInputs(brush = c(as.Date("2026-01-01"), as.Date("2026-01-31")))
+    session$flushReact()
+    expect_false(is.null(view_range()))
+    expect_equal(nrow(visible_tl()), 1)
+  })
+})
+
 test_that("stepping stays within the visible window", {
   tl <- tibble::tibble(
     source = rep("git", 5), id = letters[1:5], label = letters[1:5],
