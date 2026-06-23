@@ -15,3 +15,10 @@ test_that("binary_summary reports size and a hash", {
   sm <- binary_summary(as.raw(rep(0L, 10)))
   expect_match(sm, "10 bytes")
 })
+
+test_that("render_text_diff embeds banner labels when provided", {
+  html <- render_text_diff(c("x"), c("y"), mode = "side-by-side",
+                           a_label = "OLDLABEL", b_label = "NEWLABEL")
+  expect_match(html, "OLDLABEL")
+  expect_match(html, "NEWLABEL")
+})

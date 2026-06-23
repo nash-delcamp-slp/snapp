@@ -4,14 +4,18 @@
 .carousel-timeline { padding: .75rem .5rem 0; }
 .tl-track { position: relative; display: flex; gap: 6px; align-items: center;
             border-top: 2px solid rgba(127,127,127,.35); padding-top: 10px; }
-.tl-dot { width: 12px; height: 12px; border-radius: 50%; background: #888; display: inline-block; }
-.tl-dot.is-current { box-shadow: 0 0 0 3px rgba(0,0,0,.25); }
-.tl-dot.is-baseline { outline: 2px solid #2188ff; }
+.tl-dot { width: 12px; height: 12px; border-radius: 50%; background: #888; display: inline-block; cursor: pointer; }
+.tl-dot.is-left  { box-shadow: 0 0 0 2px var(--bs-body-bg, #fff), 0 0 0 4px #888; }
+.tl-dot.is-right { box-shadow: 0 0 0 2px var(--bs-body-bg, #fff), 0 0 0 4px #333; }
+.tl-dot.is-pinned { outline: 2px solid #f1c40f; outline-offset: 2px; }
 .tl-dot.src-gitsource { background: #e36209; }
 .tl-dot.src-snapshotdirsource { background: #2188ff; }
 .tl-dot.src-unknown { background: #888; }
+.pane-label { font-size: .8rem; opacity: .85; margin-bottom: .25rem; font-family: ui-monospace, SFMono-Regular, monospace; word-break: break-all; }
 .img-compare { display: flex; gap: 8px; }
 .img-compare .img-pane { flex: 1; border: 1px solid rgba(127,127,127,.3); padding: 4px; }
+.binary-compare { display: flex; gap: 8px; }
+.binary-pane { flex: 1; border: 1px solid rgba(127,127,127,.3); padding: 6px; }
 .source-row { display: flex; align-items: center; gap: .4rem; }
 .sidebar-footer { margin-top: auto; padding-top: 1rem; }
 

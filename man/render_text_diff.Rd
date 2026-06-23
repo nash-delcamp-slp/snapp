@@ -4,12 +4,20 @@
 \alias{render_text_diff}
 \title{Render a text diff as HTML}
 \usage{
-render_text_diff(a, b, mode = c("side-by-side", "unified"))
+render_text_diff(
+  a,
+  b,
+  mode = c("side-by-side", "unified"),
+  a_label = NULL,
+  b_label = NULL
+)
 }
 \arguments{
 \item{a, b}{Character vectors (lines) for the two sides.}
 
 \item{mode}{"side-by-side" or "unified".}
+
+\item{a_label, b_label}{Optional column banner labels for the two sides.}
 }
 \value{
 Length-1 HTML character.
