@@ -5,9 +5,11 @@
 .tl-track { position: relative; display: flex; gap: 6px; align-items: center;
             border-top: 2px solid rgba(127,127,127,.35); padding-top: 10px; }
 .tl-dot { width: 12px; height: 12px; border-radius: 50%; background: #888; display: inline-block; cursor: pointer; }
-.tl-dot.is-left  { box-shadow: 0 0 0 2px var(--bs-body-bg, #fff), 0 0 0 4px var(--bs-danger, #d9534f); }
-.tl-dot.is-right { box-shadow: 0 0 0 2px var(--bs-body-bg, #fff), 0 0 0 4px var(--bs-success, #198754); }
-.tl-dot.is-pinned { outline: 2px solid var(--bs-warning, #ffc107); outline-offset: 2px; }
+/* Marker hues mirror diffobj "yb" light palette: old/target = yellow, new/current = blue */
+:root { --snapp-side-old: #aaaa55; --snapp-side-new: #3333bb; }
+.tl-dot.is-left   { box-shadow: 0 0 0 2px var(--bs-body-bg, #fff), 0 0 0 4px var(--snapp-side-old); }
+.tl-dot.is-right  { box-shadow: 0 0 0 2px var(--bs-body-bg, #fff), 0 0 0 4px var(--snapp-side-new); }
+.tl-dot.is-pinned { outline: 2px solid var(--bs-purple, #6f42c1); outline-offset: 2px; }
 .tl-dot.src-gitsource { background: #e36209; }
 .tl-dot.src-snapshotdirsource { background: #2188ff; }
 .tl-dot.src-unknown { background: #888; }

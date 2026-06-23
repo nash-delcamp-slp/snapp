@@ -16,11 +16,41 @@ test_that("SnapshotDirSource lists snapshots with time parsed from dir name", {
 
 test_that("SnapshotDirSource falls back to mtime when time_from is NULL", {
   root <- make_snapdir_fixture()
+  # Set distinct file mtimes so dedupe keeps both rows after Change 1b
+  snap_base <- fs::path(root, ".zfs", "snapshot")
+  Sys.setFileTime(fs::path(snap_base, "snap-2026-01-01T00:00:00", "R", "model.R"),
+                  as.POSIXct("2026-01-01 00:00:00", tz = "UTC"))
+  Sys.setFileTime(fs::path(snap_base, "snap-2026-02-01T00:00:00", "R", "model.R"),
+                  as.POSIXct("2026-02-01 00:00:00", tz = "UTC"))
   src <- SnapshotDirSource$new(dataset_root = root,
     snapshot_glob = fs::path(root, ".zfs", "snapshot", "*"), name = "zfs")
   snaps <- src$list_snapshots(fs::path(root, "R", "model.R"))
   expect_equal(nrow(snaps), 2)
   expect_s3_class(snaps$time, "POSIXct")
+})
+
+test_that("SnapshotDirSource times by file mtime and collapses identical versions", {
+  root <- withr::local_tempdir()
+  base <- fs::dir_create(fs::path(root, ".zfs", "snapshot"))
+  mk <- function(snap, content, mtime) {
+    d <- fs::dir_create(fs::path(base, snap, "R"))
+    f <- fs::path(d, "model.R"); writeLines(content, f)
+    Sys.setFileTime(f, mtime); f
+  }
+  # v1 at Jan; v2 at Mar; v2 again unchanged in a later snapshot (same mtime as the Mar one)
+  mk("snap1", "v1", as.POSIXct("2026-01-01 00:00:00", tz = "UTC"))
+  mar <- as.POSIXct("2026-03-01 00:00:00", tz = "UTC")
+  mk("snap2", "v2", mar)
+  mk("snap3", "v2", mar)                  # unchanged -> identical mtime -> collapses
+  fs::dir_create(fs::path(root, "R")); writeLines("v2", fs::path(root, "R", "model.R"))
+
+  src <- new_source("zfs", list(dataset_root = root))   # no time_from -> file mtime
+  snaps <- src$list_snapshots(fs::path(root, "R", "model.R"))
+  expect_equal(nrow(snaps), 2)                          # snap2/snap3 collapsed
+  expect_true(all(diff(as.numeric(snaps$time)) > 0))    # strictly increasing
+  # oldest reads "v1"
+  oldest <- snaps$id[which.min(snaps$time)]
+  expect_equal(trimws(rawToChar(src$read_file(fs::path(root,"R","model.R"), oldest))), "v1")
 })
 
 test_that("find_zfs_root ascends to the dataset with a .zfs/snapshot dir", {

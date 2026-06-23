@@ -20,10 +20,6 @@ register_builtin_sources <- function() {
     new = function(params) {
       params$snapshot_glob <- params$snapshot_glob %||%
         as.character(fs::path(params$dataset_root, ".zfs", "snapshot", "*"))
-      params$time_from <- params$time_from %||% list(
-        regex  = "(\\d{4}-\\d{2}-\\d{2}[_-]\\d{4})",
-        format = c("%Y-%m-%d_%H%M", "%Y-%m-%d-%H%M")
-      )
       do.call(SnapshotDirSource$new, params)
     },
     detect = function(path) {

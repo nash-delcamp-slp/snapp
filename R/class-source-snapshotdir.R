@@ -28,9 +28,10 @@ SnapshotDirSource <- R6::R6Class(
     #' @field snapshot_glob Glob pattern that expands to snapshot directories.
     snapshot_glob = NULL,
 
-    #' @field time_from Named list with `regex` and optional `format` (scalar or
-    #'   character vector of formats tried in order) for parsing snapshot timestamps
-    #'   from directory names; NULL to use mtime.
+    #' @field time_from Optional named list with `regex` and optional `format` (scalar
+    #'   or character vector of formats tried in order) for parsing snapshot timestamps
+    #'   from directory names. When NULL (the default), timing uses the file's own mtime
+    #'   inside the snapshot directory.
     time_from = NULL,
 
     #' @description Create a SnapshotDirSource.
@@ -51,8 +52,11 @@ SnapshotDirSource <- R6::R6Class(
 
     #' @description Extract a POSIXct timestamp from a snapshot directory path.
     #' @param dir Absolute path to a snapshot directory.
+    #' @param file Optional absolute path to the specific file inside the snapshot;
+    #'   when provided (and `time_from` is not set), its mtime is used instead of
+    #'   the directory mtime.
     #' @return POSIXct timestamp.
-    snapshot_time = function(dir) {
+    snapshot_time = function(dir, file = NULL) {
       tf <- self$time_from
       if (!is.null(tf) && !is.null(tf$regex)) {
         m <- regmatches(basename(dir), regexec(tf$regex, basename(dir)))[[1]]
@@ -63,24 +67,25 @@ SnapshotDirSource <- R6::R6Class(
           }
         }
       }
-      as.POSIXct(file.info(dir)$mtime, tz = "UTC")
+      target <- file %||% dir
+      as.POSIXct(file.info(target)$mtime, tz = "UTC")
     },
+
     #' @description List snapshots containing a given file path.
     #' @param path Absolute file path within the dataset root.
     #' @return tibble(id, label, time).
     list_snapshots = function(path) {
-      rel <- fs::path_rel(path, self$dataset_root)
+      rel  <- fs::path_rel(path, self$dataset_root)
       dirs <- self$snapshot_dirs()
-      hits <- Filter(function(d) fs::file_exists(fs::path(d, rel)), dirs)
-      if (length(hits) == 0) {
-        return(tibble::tibble(id = character(), label = character(),
-                              time = as.POSIXct(character())))
-      }
-      tibble::tibble(
-        id = as.character(fs::path_abs(unlist(hits))),
-        label = basename(unlist(hits)),
-        time = do.call(c, lapply(hits, function(d) self$snapshot_time(d)))
-      )
+      hits <- unlist(Filter(function(d) fs::file_exists(fs::path(d, rel)), dirs))
+      empty <- tibble::tibble(id = character(), label = character(),
+                              time = as.POSIXct(character()))
+      if (length(hits) == 0) return(empty)
+      times <- do.call(c, lapply(hits, function(d) self$snapshot_time(d, fs::path(d, rel))))
+      o <- order(times); hits <- hits[o]; times <- times[o]
+      keep <- !duplicated(times)            # collapse unchanged (identical-mtime) versions
+      hits <- hits[keep]; times <- times[keep]
+      tibble::tibble(id = as.character(fs::path_abs(hits)), label = basename(hits), time = times)
     },
 
     #' @description Read raw file bytes from a snapshot.

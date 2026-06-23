@@ -22,9 +22,10 @@ Reads point-in-time copies from a set of snapshot directories (e.g. ZFS
 
 \item{\code{snapshot_glob}}{Glob pattern that expands to snapshot directories.}
 
-\item{\code{time_from}}{Named list with `regex` and optional `format` (scalar or
-character vector of formats tried in order) for parsing snapshot timestamps
-from directory names; NULL to use mtime.}
+\item{\code{time_from}}{Optional named list with `regex` and optional `format` (scalar
+or character vector of formats tried in order) for parsing snapshot timestamps
+from directory names. When NULL (the default), timing uses the file's own mtime
+inside the snapshot directory.}
 }
 \if{html}{\out{</div>}}
 }
@@ -95,13 +96,17 @@ Character vector of absolute snapshot directory paths.
 \subsection{Method \code{snapshot_time()}}{
 Extract a POSIXct timestamp from a snapshot directory path.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{SnapshotDirSource$snapshot_time(dir)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{SnapshotDirSource$snapshot_time(dir, file = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{dir}}{Absolute path to a snapshot directory.}
+
+\item{\code{file}}{Optional absolute path to the specific file inside the snapshot;
+when provided (and `time_from` is not set), its mtime is used instead of
+the directory mtime.}
 }
 \if{html}{\out{</div>}}
 }
