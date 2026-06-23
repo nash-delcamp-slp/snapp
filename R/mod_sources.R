@@ -17,26 +17,46 @@ mod_sources_ui <- function(id) {
 mod_sources_server <- function(id, config_rv, discovered = shiny::reactive(list())) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
-    # instantiate configured + discovered into a named list with enabled flags
+    enabled <- shiny::reactiveValues()   # source key -> logical, session-persistent toggle state
+    has_obs <- new.env(parent = emptyenv())  # source key -> TRUE once its sync observer exists
+
     instances <- shiny::reactive({
       cfg <- config_rv()
       conf <- lapply(cfg$sources, function(s) {
         inst <- tryCatch(new_source(s$type, s$params %||% list()), error = function(e) NULL)
         if (is.null(inst)) return(NULL)
         inst$name <- s$name
-        list(inst = inst, enabled = isTRUE(s$enabled), key = s$name, saved = TRUE)
+        list(inst = inst, key = s$name, saved = TRUE, default = isTRUE(s$enabled))
       })
       disc <- lapply(discovered(), function(s) {
         inst <- tryCatch(new_source(s$type, s$params %||% list()), error = function(e) NULL)
         if (is.null(inst)) return(NULL)
         inst$name <- s$name
-        list(inst = inst, enabled = FALSE, key = s$name, saved = FALSE)
+        list(inst = inst, key = s$name, saved = FALSE, default = TRUE)   # discovered default ON
       })
       conf <- Filter(Negate(is.null), conf)
       disc <- Filter(Negate(is.null), disc)
-      any_conf_enabled <- any(vapply(conf, function(x) isTRUE(x$enabled), logical(1)))
-      if (!any_conf_enabled && length(disc) > 0) disc[[1]]$enabled <- TRUE
+      conf_keys <- vapply(conf, function(x) x$key, character(1))
+      disc <- Filter(function(x) !(x$key %in% conf_keys), disc)          # configured wins on key clash
       c(conf, disc)
+    })
+
+    # Seed session toggle state (once per key, default-on) + one sync observer per key.
+    shiny::observe({
+      for (it in instances()) {
+        key <- it$key
+        if (is.null(enabled[[key]])) enabled[[key]] <- isTRUE(it$default)
+        if (is.null(has_obs[[key]])) {
+          has_obs[[key]] <- TRUE
+          local({
+            k <- key
+            cbid <- paste0("en_", make.names(k))
+            shiny::observeEvent(input[[cbid]], {
+              enabled[[k]] <- isTRUE(input[[cbid]])
+            }, ignoreNULL = FALSE, ignoreInit = TRUE)
+          })
+        }
+      }
     })
 
     output$list <- shiny::renderUI({
@@ -44,8 +64,10 @@ mod_sources_server <- function(id, config_rv, discovered = shiny::reactive(list(
       if (length(items) == 0) return(shiny::p(class = "text-muted", "No sources. Add or discover one."))
       lapply(items, function(it) {
         cb <- ns(paste0("en_", make.names(it$key)))
+        val <- shiny::isolate(enabled[[it$key]])     # isolate: a re-render reads persisted state, never resets it
+        if (is.null(val)) val <- isTRUE(it$default)
         shiny::div(class = "source-row",
-          shiny::checkboxInput(cb, it$key, value = it$enabled),
+          shiny::checkboxInput(cb, it$key, value = val),
           if (!it$saved) shiny::tags$span(class = "badge bg-info", "discovered"))
       })
     })
@@ -76,13 +98,10 @@ mod_sources_server <- function(id, config_rv, discovered = shiny::reactive(list(
       if (ok) { config_rv(cfg); shiny::removeModal() }
     })
 
-    # Enabled instances reactive: read each checkbox.
+    # Enabled instances reactive: read the PERSISTENT store (not the raw input).
     shiny::reactive({
       items <- instances()
-      keep <- Filter(function(it) {
-        val <- input[[paste0("en_", make.names(it$key))]]
-        isTRUE(val)
-      }, items)
+      keep <- Filter(function(it) isTRUE(enabled[[it$key]]), items)
       lapply(keep, function(it) it$inst)
     })
   })
