@@ -248,6 +248,13 @@ test_that("a full-span brush leaves view_range NULL (no spurious window)", {
   })
 })
 
+test_that("src_classes maps the live source to the src-live token", {
+  shiny::testServer(mod_carousel_server, args = carousel_args(make_tl(3)), {
+    session$flushReact()
+    expect_equal(src_classes()[[LIVE_SOURCE]], "src-live")
+  })
+})
+
 test_that("stepping stays within the visible window", {
   tl <- tibble::tibble(
     source = rep("git", 5), id = letters[1:5], label = letters[1:5],

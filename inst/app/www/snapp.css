@@ -8,6 +8,7 @@
           width: 6px; height: 6px; border-radius: 50%; background: #888; }
 .ov-dot.src-gitsource { background: var(--snapp-side-old, #aaaa55); }
 .ov-dot.src-snapshotdirsource { background: var(--snapp-side-new, #3333bb); }
+.ov-dot.src-live { background: var(--snapp-live, #28a745); }
 .carousel-timeline { padding: .75rem 2rem 0; }
 .tl-track { position: relative; height: 40px; margin: 10px 8px 4px; border-top: 2px solid rgba(127,127,127,.35); }
 .tl-dot { position: absolute; top: -7px; transform: translateX(-50%); width: 12px; height: 12px; border-radius: 50%; background: #888; display: inline-block; cursor: pointer; }
@@ -22,6 +23,7 @@
 .tl-dot.src-gitsource { background: #e36209; }
 .tl-dot.src-snapshotdirsource { background: #2188ff; }
 .tl-dot.src-unknown { background: #888; }
+.tl-dot.src-live { background: #28a745; }
 .pane-label { font-size: .8rem; opacity: .85; margin-bottom: .25rem; font-family: ui-monospace, SFMono-Regular, monospace; word-break: break-all; }
 .img-compare { display: flex; gap: 8px; }
 .img-compare .img-pane { flex: 1; border: 1px solid rgba(127,127,127,.3); padding: 4px; }
