@@ -29,3 +29,38 @@ test_that("fetch_content attaches a content hash", {
   expect_equal(c1$hash, content_hash(c1$bytes))
   expect_equal(nchar(c1$hash), 12L)
 })
+
+test_that("fetch_content reads the live on-disk file for the Current entry", {
+  tmp <- withr::local_tempfile(fileext = ".R")
+  writeBin(charToRaw("line1\nline2"), tmp)
+
+  c1 <- fetch_content(tmp, list(source = LIVE_SOURCE, id = LIVE_ID), list())
+
+  expect_equal(c1$type, "text")
+  expect_equal(c1$lines, c("line1", "line2"))
+  expect_equal(c1$hash, content_hash(c1$bytes))
+  expect_equal(nchar(c1$hash), 12L)
+})
+
+test_that("fetch_content classifies a live binary file (NUL bytes) and emits no lines", {
+  tmp <- withr::local_tempfile(fileext = ".bin")
+  writeBin(as.raw(c(0x00, 0x01, 0x02)), tmp)
+
+  c1 <- fetch_content(tmp, list(source = LIVE_SOURCE, id = LIVE_ID), list())
+
+  expect_equal(c1$type, "binary")
+  expect_null(c1$lines)
+})
+
+test_that("live and snapshot bytes that match produce equal hashes", {
+  tmp <- withr::local_tempfile(fileext = ".txt")
+  writeBin(charToRaw("same"), tmp)
+  s <- fake_history(tmp, list(
+    list(id = "1", label = "x", time = 1, content = "same")
+  ), name = "git")
+
+  live <- fetch_content(tmp, list(source = LIVE_SOURCE, id = LIVE_ID), list(s))
+  snap <- fetch_content(tmp, list(source = "git", id = "1"), list(s))
+
+  expect_equal(live$hash, snap$hash)
+})
