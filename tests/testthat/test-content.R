@@ -64,3 +64,11 @@ test_that("live and snapshot bytes that match produce equal hashes", {
 
   expect_equal(live$hash, snap$hash)
 })
+
+test_that("fetch_content handles a Current entry whose file no longer exists", {
+  missing <- file.path(withr::local_tempdir(), "gone.txt")
+  c1 <- fetch_content(missing, list(source = LIVE_SOURCE, id = LIVE_ID), list())
+  expect_equal(length(c1$bytes), 0L)
+  expect_equal(c1$hash, content_hash(c1$bytes))
+  expect_equal(nchar(c1$hash), 12L)
+})

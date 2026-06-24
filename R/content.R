@@ -8,7 +8,11 @@
 #' @export
 fetch_content <- function(path, entry, sources) {
   if (identical(entry$source, LIVE_SOURCE)) {
-    bytes <- readBin(path, "raw", n = file.info(path)$size %||% 0)
+    bytes <- if (isTRUE(fs::is_file(path))) {
+      readBin(path, "raw", n = file.info(path)$size %||% 0)
+    } else {
+      raw(0)
+    }
     type  <- SnapshotSource$new()$classify(bytes, path)
   } else {
     src <- Find(function(s) identical(s$name, entry$source), sources)
